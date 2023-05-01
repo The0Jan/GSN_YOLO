@@ -43,7 +43,7 @@ class ResBlock(nn.Module):
     def forward(self, x):
         x = self.zero_pad_conv(x)
         for resunit in self.n_resunits:
-            x = x + resunit(x)
+            x = resunit(x)
         
         
 class Darknet53(nn.Module):
