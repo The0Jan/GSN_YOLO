@@ -30,7 +30,7 @@ class Residual(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             Convolutional(in_channels, in_channels // 2, kernel_size=1, padding=0),
-            Convolutional(in_channels // 2, in_channels, kernel_size=3, padding=1),
+            Convolutional(in_channels // 2, in_channels, kernel_size=3, padding=1)
         )
 
     def forward(self, x):
@@ -47,7 +47,7 @@ class ResidualBlock(nn.Module):
         super().__init__()
         self.block = nn.Sequential(
             Convolutional(in_channels, out_channels, kernel_size=3, stride=2, padding = 0),
-            nn.Sequential([Residual(out_channels) for _ in range(repeat)]),
+            nn.Sequential(*[Residual(out_channels) for _ in range(repeat)]),
         )
 
     def forward(self, x):
