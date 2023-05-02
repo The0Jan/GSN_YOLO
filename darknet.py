@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 
@@ -11,9 +12,9 @@ class Convolutional(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, **kwargs) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, bias=False, **kwargs),
+            nn.Conv2d(in_channels, out_channels, bias=False, padding=1, **kwargs),
             nn.BatchNorm2d(out_channels),
-            nn.LeakyReLU(),
+            nn.LeakyReLU(0.1),
         )
 
     def forward(self, x):
@@ -29,8 +30,8 @@ class Residual(nn.Module):
     def __init__(self, in_channels: int) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            Convolutional(in_channels, in_channels // 2, kernel_size=1, padding=0),
-            Convolutional(in_channels // 2, in_channels, kernel_size=3, padding=1)
+            Convolutional(in_channels, in_channels // 2, kernel_size=1),
+            Convolutional(in_channels // 2, in_channels, kernel_size=3),
         )
 
     def forward(self, x):
@@ -41,12 +42,12 @@ class Residual(nn.Module):
 
 class ResidualBlock(nn.Module):
     """
-    Block of repeated Residual layers.
+    Block of repeated Residual layers, prefixed with a x2 downsampling convolutional layer.
     """
     def __init__(self, repeat, in_channels, out_channels) -> None:
         super().__init__()
         self.block = nn.Sequential(
-            Convolutional(in_channels, out_channels, kernel_size=3, stride=2, padding = 0),
+            Convolutional(in_channels, out_channels, kernel_size=3, stride=2),
             nn.Sequential(*[Residual(out_channels) for _ in range(repeat)]),
         )
 
@@ -58,8 +59,9 @@ class ResidualBlock(nn.Module):
 class Darknet53(nn.Module):
     def __init__(self, in_channels) -> None:
         super().__init__()
-        self.route_con_1 
-        self.route_con_2
+        # Save results of intermediate blocks for YOLO heads
+        self.post_block_3 = None
+        self.post_block_4 = None
         # Starting point
         self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
         # Residual blocks
@@ -70,7 +72,6 @@ class Darknet53(nn.Module):
         self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
         # Fully connected layer omitted
 
-
     def forward(self, x):
         # Starting point
         x = self.conv(x)
@@ -78,9 +79,9 @@ class Darknet53(nn.Module):
         x = self.block_1(x)
         x = self.block_2(x)
         x = self.block_3(x)
-        self.route_con_1 = x
+        self.post_block_3 = x
         x = self.block_4(x)
-        self.route_con_2 = x
+        self.post_block_4 = x
         x = self.block_5(x)
         # Fully connected layer omitted
         return x
