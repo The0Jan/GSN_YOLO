@@ -28,7 +28,7 @@ class Router(nn.Module):
         x = self.upsample(x)
         return x
 
-class YOLO(nn.Module):
+class YOLOv3(nn.Module):
     def __init__(self, num_classes, in_channels = 3) -> None:
         super().__init__()
         self.num_classes = num_classes
@@ -56,9 +56,7 @@ class YOLO(nn.Module):
     def forward(self, x):
         results = []
         
-        outputs = self.darknet(x)
-        x = outputs[-1]
-        outputs.pop()
+        x = self.darknet(x)
         
         ### 1 Tensor
         x = self.conv_block_0(x)
@@ -68,8 +66,7 @@ class YOLO(nn.Module):
         ### 2 Tensor
         x = self.conv_and_upsample_1(x)
         
-        x = torch.cat([x, outputs[-1]], dim=1)
-        outputs.pop()
+        x = torch.cat([x, self.darknet.route_con_1], dim=1)
         
         x = self.conv_block_1(x)
         results.append(self.conv_1(x))
@@ -77,8 +74,7 @@ class YOLO(nn.Module):
         ### 3 Tensor
         x = self.conv_and_upsample_2(x)
         
-        x = torch.cat([x, outputs[-1]], dim=1)
-        outputs.pop()
+        x = torch.cat([x, self.darknet.route_con_2], dim=1)
         
         x = self.conv_block_2(x)
         results.append(self.conv_2(x))
