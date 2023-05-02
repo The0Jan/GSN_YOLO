@@ -3,66 +3,80 @@ import torch.nn as nn
 import numpy as np
 
 
-
-# Convolution set 
-class ConvBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, **kwargs) -> None:
+class Convolutional(nn.Module):
+    """
+    Basic Darknet Convolutional unit containing a 2D Convolutional layer,
+    a normalization layer and leaky ReLU activation layer.
+    """
+    def __init__(self, in_channels: int, out_channels: int, **kwargs) -> None:
         super().__init__()
-        self.con = nn.Conv2d(in_channels, out_channels, bias = False, **kwargs)
-        self.bn = nn.BatchNorm2d(out_channels)
-        self.leaky = nn.LeakyReLU(0.1) # Recheck if correct value for RelU
-        
+        self.layers = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, bias=False, **kwargs),
+            nn.BatchNorm2d(out_channels),
+            nn.LeakyReLU(),
+        )
+
     def forward(self, x):
-        x = self.con(x)
-        x = self.bn(x)
-        x = self.leaky(x)
+        x = self.layers(x)
         return x
-    
 
-class ResUnit(nn.Module):
-    def __init__(self, channels) -> None:
+
+class Residual(nn.Module):
+    """
+    Residual layer containing 1x1 and 3x3 convolutional blocks and an additive
+    skip connection.
+    """
+    def __init__(self, in_channels: int) -> None:
         super().__init__()
-        self.conv1 = ConvBlock(channels, channels //2, kernel_size = 1)
-        self.conv2 = ConvBlock(channels// 2, channels, kernel_size = 3, padding = 1)
+        self.layers = nn.Sequential(
+            Convolutional(in_channels, in_channels // 2, kernel_size=1, padding=0),
+            Convolutional(in_channels // 2, in_channels, kernel_size=3, padding=1),
+        )
 
     def forward(self, x):
-        pre_x = x
-        x = self.conv1(x)
-        x = self.conv2(x)
-        return x + pre_x
+        residual = x
+        x = self.layers(x)
+        return x + residual
 
 
-class ResBlock(nn.Module):
-    def __init__(self, n_times, in_chan, out_chan, kernel = 3, stride = 2) -> None:
+class ResidualBlock(nn.Module):
+    """
+    Block of repeated Residual layers.
+    """
+    def __init__(self, repeat, in_channels, out_channels) -> None:
         super().__init__()
-        self.zero_pad_conv = ConvBlock(in_chan, out_chan, kernel_size = kernel, stride = stride, padding = 0)
-        self.n_resunits = nn.ModuleList()
-        for _ in range(n_times):
-            self.n_resunits += ResUnit(out_chan)
-            
+        self.block = nn.Sequential(
+            Convolutional(in_channels, out_channels, kernel_size=3, stride=2, padding = 0),
+            nn.Sequential([Residual(out_channels) for _ in range(repeat)]),
+        )
+
     def forward(self, x):
-        x = self.zero_pad_conv(x)
-        for resunit in self.n_resunits:
-            x = resunit(x)
-        
-        
+        x = self.block(x)
+        return x
+
+
 class Darknet53(nn.Module):
     def __init__(self, in_channels) -> None:
         super().__init__()
-
-        self.con = ConvBlock(in_channels, 32, kernel_size = 3, stride = 1)
-        self.res_1 = ResBlock(1 , 32, 64)
-        self.res_2 = ResBlock(2 , 64, 128)
-        self.res_3 = ResBlock(8 , 128, 256)
-        self.res_4 = ResBlock(8 , 256, 512)
-        self.res_5 = ResBlock(4 , 512, 1024)
+        # Starting point
+        self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
+        # Residual blocks
+        self.block_1 = ResidualBlock(repeat=1, in_channels=32,  out_channels=64)
+        self.block_2 = ResidualBlock(repeat=2, in_channels=64,  out_channels=128)
+        self.block_3 = ResidualBlock(repeat=8, in_channels=128, out_channels=256)
+        self.block_4 = ResidualBlock(repeat=8, in_channels=256, out_channels=512)
+        self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
+        # Fully connected layer omitted
 
 
     def forward(self, x):
-        x = self.con(x)
-        x = self.res_1(x)
-        x = self.res_2(x)
-        x = self.res_3(x)
-        x = self.res_4(x)
-        x = self.res_5(x)
+        # Starting point
+        x = self.conv(x)
+        # Residual blocks
+        x = self.block_1(x)
+        x = self.block_2(x)
+        x = self.block_3(x)
+        x = self.block_4(x)
+        x = self.block_5(x)
+        # Fully connected layer omitted
         return x
