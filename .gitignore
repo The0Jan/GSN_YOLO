@@ -1,5 +1,2 @@
-test-MADAI/
-train-MADAI/
-test/
-train/
-*.zip
+test*
+train*
