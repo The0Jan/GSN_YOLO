@@ -12,7 +12,7 @@ class Convolutional(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, **kwargs) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, bias=False, padding=1, **kwargs),
+            nn.Conv2d(in_channels, out_channels, bias=False, **kwargs),
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(0.1),
         )
@@ -31,7 +31,7 @@ class Residual(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             Convolutional(in_channels, in_channels // 2, kernel_size=1),
-            Convolutional(in_channels // 2, in_channels, kernel_size=3),
+            Convolutional(in_channels // 2, in_channels, kernel_size=3, padding = 1),
         )
 
     def forward(self, x):
