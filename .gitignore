@@ -1,3 +1,4 @@
 test*
 train*
 __pycache__
+weights/
