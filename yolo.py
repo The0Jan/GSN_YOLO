@@ -123,23 +123,24 @@ class YOLOv3(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         results = []
+        width = x.size(2)
         ### Backbone
         x = self.darknet(x)
         ### 13x13
         x = self.conv_block_0(x)
-        out = self.yolo_0(self.conv_0_f(x))
+        out = self.yolo_0(self.conv_0_f(x), width)
         results.append(out)
         ### 26x26
         x = self.conv_and_upsample_1(x)
         x = torch.cat([x, self.darknet.post_block_4], dim=1)
         x = self.conv_block_1(x)
-        out = self.yolo_1(self.conv_1_f(x))
+        out = self.yolo_1(self.conv_1_f(x), width)
         results.append(out)
         ### 52x52
         x = self.conv_and_upsample_2(x)
         x = torch.cat([x, self.darknet.post_block_3], dim=1)
         x = self.conv_block_2(x)
-        out = self.yolo_2(self.conv_2_f(x))
+        out = self.yolo_2(self.conv_2_f(x), width)
         results.append(out)
         # Finally, results
         return results if self.training else torch.cat(results, dim=1)
