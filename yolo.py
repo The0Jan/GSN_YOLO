@@ -11,7 +11,7 @@ class ConvolutionalBlock(nn.Module):
         self.block = nn.Sequential(
             darknet.Convolutional(in_channels, out_channels, kernel_size=1),
             *[
-                darknet.Convolutional(out_channels, mid_channels, kernel_size=3) if i % 2 == 0 else
+                darknet.Convolutional(out_channels, mid_channels, kernel_size=3 , padding =1) if i % 2 == 0 else
                 darknet.Convolutional(mid_channels, out_channels, kernel_size=1)
             for i in range(repeat-1)]
         )
@@ -79,16 +79,17 @@ class YOLOv3(nn.Module):
         x = self.conv_block_0(x)
         results.append(self.conv_0_f(x))
         ### 2 Tensor
+        print("Tensor 2")
         x = self.conv_and_upsample_1(x)
         print(saved_2.size())
         print(x.size())
 
-        x = torch.cat([x, saved_1], dim=1)
+        x = torch.cat([x, saved_2], dim=1)
         x = self.conv_block_1(x)
         results.append(self.conv_1_f(x))
         ### 3 Tensor
         x = self.conv_and_upsample_2(x)
-        x = torch.cat([x, saved_2], dim=1)
+        x = torch.cat([x, saved_1], dim=1)
         x = self.conv_block_2(x)
         results.append(self.conv_2_f(x))
         return results
