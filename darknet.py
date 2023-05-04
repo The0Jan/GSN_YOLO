@@ -47,7 +47,7 @@ class ResidualBlock(nn.Module):
     def __init__(self, repeat, in_channels, out_channels) -> None:
         super().__init__()
         self.block = nn.Sequential(
-            Convolutional(in_channels, out_channels, kernel_size=3, stride=2),
+            Convolutional(in_channels, out_channels, kernel_size=3, stride=2, padding = 1),
             nn.Sequential(*[Residual(out_channels) for _ in range(repeat)]),
         )
 
@@ -63,7 +63,7 @@ class Darknet53(nn.Module):
         self.post_block_3 = None
         self.post_block_4 = None
         # Starting point
-        self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
+        self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1, padding = 1)
         # Residual blocks
         self.block_1 = ResidualBlock(repeat=1, in_channels=32,  out_channels=64)
         self.block_2 = ResidualBlock(repeat=2, in_channels=64,  out_channels=128)

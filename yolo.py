@@ -73,13 +73,16 @@ class YOLOv3(nn.Module):
     def forward(self, x):
         results = []
         x = self.darknet(x)
-        saved_1 = self.darknet.route_con_1
-        saved_2 = self.darknet.route_con_2
+        saved_1 = self.darknet.post_block_3
+        saved_2 = self.darknet.post_block_4
         ### 1 Tensor
         x = self.conv_block_0(x)
         results.append(self.conv_0_f(x))
         ### 2 Tensor
         x = self.conv_and_upsample_1(x)
+        print(saved_1.size())
+        print(x.size())
+
         x = torch.cat([x, saved_1], dim=1)
         x = self.conv_block_1(x)
         results.append(self.conv_1_f(x))

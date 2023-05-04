@@ -12,13 +12,14 @@ file_name2 = os.path.join(dir, 'yolov3.weights')
             
             
 model = darknet.Darknet53(3)
+summary(model, input_size=(3,416,416), device='cpu')
 
 model = yolo.YOLOv3(80, 3)
+summary(model, input_size=(3,416,416), device='cpu')
 
 #for  n, p in model.named_parameters():
 #    print(n, p.numel())
     
-summary(model, input_size=(3,416,416), device='cpu')
     
 #load_weights(file_name2, model)
 
