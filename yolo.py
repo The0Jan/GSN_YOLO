@@ -80,7 +80,7 @@ class YOLOv3(nn.Module):
         results.append(self.conv_0_f(x))
         ### 2 Tensor
         x = self.conv_and_upsample_1(x)
-        print(saved_1.size())
+        print(saved_2.size())
         print(x.size())
 
         x = torch.cat([x, saved_1], dim=1)
