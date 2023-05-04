@@ -8,16 +8,17 @@ class Convolutional(nn.Module):
     """
     Basic Darknet Convolutional unit containing a 2D Convolutional layer,
     a normalization layer and leaky ReLU activation layer.
+    Kernel size of 3 implies padding of 1, else we get mismatched output shapes.
     """
-    def __init__(self, in_channels: int, out_channels: int, **kwargs) -> None:
+    def __init__(self, in_channels: int, out_channels: int, kernel_size=1, **kwargs) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, bias=False, padding=1, **kwargs),
+            nn.Conv2d(in_channels, out_channels, bias=False, kernel_size=kernel_size, padding=kernel_size//2, **kwargs),
             nn.BatchNorm2d(out_channels),
             nn.LeakyReLU(0.1),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.layers(x)
         return x
 
@@ -34,7 +35,7 @@ class Residual(nn.Module):
             Convolutional(in_channels // 2, in_channels, kernel_size=3),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         residual = x
         x = self.layers(x)
         return x + residual
@@ -51,7 +52,7 @@ class ResidualBlock(nn.Module):
             nn.Sequential(*[Residual(out_channels) for _ in range(repeat)]),
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.block(x)
         return x
 
@@ -72,7 +73,7 @@ class Darknet53(nn.Module):
         self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
         # Fully connected layer omitted
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # Starting point
         x = self.conv(x)
         # Residual blocks
