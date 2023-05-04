@@ -27,7 +27,7 @@ class FinalConvolutional(nn.Module):
     def __init__(self, in_channels: int, mid_channels: int, out_channels: int) -> None:
         super().__init__()
         self.block = nn.Sequential(
-            darknet.Convolutional(in_channels, mid_channels, kernel_size=3),
+            darknet.Convolutional(in_channels, mid_channels, kernel_size=3, padding = 1),
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=True),
         )
 
