@@ -9,9 +9,11 @@ def load_attrs(module: nn.Module, input_file, count: int, attrs: List[Tuple[str,
     for name, use_data in attrs:
         attr = getattr(module, name)
         if use_data:
-            attr = attr.data
+            attr_data = attr.data
+        else:
+            attr_data = attr
         #Cast the loaded attributes into dims of model weights & copy the data to model.
-        attr.copy_(torch.from_numpy(np.fromfile(input_file, dtype=np.float32, count=count)).view_as(attr))
+        attr_data.copy_(torch.from_numpy(np.fromfile(input_file, dtype=np.float32, count=count)).view_as(attr_data))
         setattr(module, name, attr)
 
 
