@@ -1,8 +1,9 @@
+import torch
 import dataset
 import pytorch_lightning as pl
-from torch.utils.data import DataLoader, random_split, Subset
-import torch
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+from torch.utils.data import DataLoader, Subset
+from torchvision.transforms import Compose
+
 class MadaiModule(pl.LightningDataModule):
 
     def __init__(self):
@@ -29,7 +30,6 @@ class MadaiModule(pl.LightningDataModule):
         # called on every GPU
         # use our dataset and defined transformations
         dataset_yolo = dataset.YOLODataset('train-new/Annotations', 'train-new/Image')
-
         indices = torch.randperm(len(dataset)).tolist()
         self.dataset_train = Subset(dataset_yolo, indices[-10000:])
         self.dataset_val = Subset(dataset_yolo, indices[-10000:])
