@@ -29,12 +29,12 @@ class MadaiModule(pl.LightningDataModule):
     def setup(self, stage=None):
         # called on every GPU
         # use our dataset and defined transformations
-        dataset_yolo = dataset.YOLODataset('train-new/Annotations', 'train-new/Image')
+        dataset_yolo = dataset.YOLODataset('train-new/annotations', 'train-new/images')
         indices = torch.randperm(len(dataset)).tolist()
         self.dataset_train = Subset(dataset_yolo, indices[-10000:])
         self.dataset_val = Subset(dataset_yolo, indices[-10000:])
 
-        self.dataset_test = dataset.YOLODataset('test-new/Annotations', 'test-new/Image')
+        self.dataset_test = dataset.YOLODataset('test-new/annotations', 'test-new/images')
         
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=2)
