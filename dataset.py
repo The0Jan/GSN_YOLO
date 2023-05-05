@@ -64,16 +64,18 @@ def tensor_to_image(tensor_image):
     to_pil_image = Compose([ ToPILImage()])
     image = to_pil_image(tensor_image)
     return image
+
+
 ###########################
 train_path_anno = 'test-new/Annotations'
 train_path_img =  'test-new/Images'
 
 
 image_size = (416, 416)
-imagenet_transform = Compose([Resize(image_size), ToTensor()])
+example_transform = Compose([Resize(image_size)])
 
 
-yolo_dataset = YOLODataset(train_path_anno, train_path_img, 416)
+yolo_dataset = YOLODataset(train_path_anno, train_path_img )
 
 
 tensor_image, org_size, label = yolo_dataset[1]
