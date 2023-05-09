@@ -70,7 +70,7 @@ if __name__ == "__main__":
     dm = MadaiModule()
     dm.setup()
     
-    print(dm.dataset_train[0])
-    img = dataset.tensor_to_image(dm.dataset_train[0][0])
+    img_tensor, org_size, target = dm.dataset_train[0]
+    img = dataset.tensor_to_image(img_tensor)
     img.show()
-    dm.dataset_val
+    print(org_size, target)
