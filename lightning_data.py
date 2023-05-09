@@ -40,7 +40,8 @@ class MadaiModule(pl.LightningDataModule):
         if stage == 'fit' or stage is None:
             dataset_yolo = dataset.YOLODataset(self.train_anno_dir, self.train_img_dir, 
                                                transform = self.img_transform,
-                                               target_transform = self.target_transform)
+                                               target_transform = self.target_transform,
+                                               image_size = self.image_size)
             
             train_dataset_size = int(len(dataset_yolo) * 0.9)
             self.dataset_train, self.dataset_val  = random_split(dataset_yolo, [train_dataset_size, len(dataset_yolo) - train_dataset_size])
@@ -48,7 +49,8 @@ class MadaiModule(pl.LightningDataModule):
         if stage == 'test' or stage is None:
             self.dataset_test = dataset.YOLODataset(self.test_anno_dir, self.test_img_dir,
                                                transform = self.img_transform,
-                                               target_transform = self.target_transform)
+                                               target_transform = self.target_transform,
+                                               image_size = self.image_size)
         
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=2)
@@ -63,14 +65,23 @@ class MadaiModule(pl.LightningDataModule):
         return Compose([Resize(self.image_size), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         
     def get_target_transform(self):
-        return None
+        return resize_bbs
+
+def  resize_bbs(org_size, new_size, bbs):
+    Rx = new_size[0]/org_size[0]
+    Ry = new_size[1]/org_size[1]
     
-    
+    bbs[1] = round(bbs[1]*Rx)
+    bbs[2] = round(bbs[2]*Ry)
+    bbs[3] = round(bbs[3]*Rx)
+    bbs[4] = round(bbs[4]*Ry)
+    return bbs
+
 if __name__ == "__main__":
     dm = MadaiModule()
     dm.setup()
     
-    img_tensor, org_size, target = dm.dataset_train[0]
-    img = dataset.tensor_to_image(img_tensor)
-    img.show()
-    print(org_size, target)
+    img_tensor, img_path, org_size, target = dm.dataset_train[0]
+    dataset.visualize_results(img_tensor, target)
+    
+    print(img_path, org_size, target)
