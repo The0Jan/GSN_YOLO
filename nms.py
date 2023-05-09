@@ -53,6 +53,9 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
 
 
 def after_party(predictions, confidence=0.3, iou=0.5):
+    """
+    id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
+    """
     # Filter out low objectness confidence results
     predictions = confidence_threshold(predictions, confidence)
     # Transform bbox from (x, y, w, h, ...) into (x1, y1, x2, y2, ...)
