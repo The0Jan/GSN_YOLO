@@ -40,6 +40,7 @@ class YOLODataset(Dataset):
         anno_path = os.path.join(self.annotations_dir, self.annotations_list[idx])
         bboxes = []
         image = loader(img_path)
+        org_size = image.size
         
         if self.transform:
             image = self.transform(image)
@@ -52,7 +53,7 @@ class YOLODataset(Dataset):
                 for i, e in enumerate(elements):
                     elements[i] = int(e)
                 if(index == 0 ):
-                    org_size = elements
+                    continue
                 else:
                     bboxes.append(elements)
                     

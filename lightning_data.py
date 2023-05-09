@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, random_split
 
 class MadaiModule(pl.LightningDataModule):
     def __init__(self, batch_size = 32, 
-                 image_size = (416,416),
+                 image_size = (416, 416),
                  train_anno_dir = 'train-new/annotations', 
                  train_img_dir = 'train-new/images',
                  test_anno_dir = 'test-new/annotations',
@@ -70,7 +70,8 @@ class MadaiModule(pl.LightningDataModule):
 def  resize_bbs(org_size, new_size, bbs):
     Rx = new_size[0]/org_size[0]
     Ry = new_size[1]/org_size[1]
-    
+    print(Rx, Ry)
+    print(bbs)
     bbs[1] = round(bbs[1]*Rx)
     bbs[2] = round(bbs[2]*Ry)
     bbs[3] = round(bbs[3]*Rx)
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     dm = MadaiModule()
     dm.setup()
     
-    img_tensor, img_path, org_size, target = dm.dataset_train[0]
+    img_tensor, img_path, org_size, target = dm.dataset_train[10]
     dataset.visualize_results(img_tensor, target)
     
     print(img_path, org_size, target)

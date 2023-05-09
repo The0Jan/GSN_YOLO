@@ -40,6 +40,11 @@ def process_annotations(filename: str, outdir: str) -> None:
 
 
 def process_images(filename: str, outdir: str) -> None:
+    name = os.path.basename(filename)
+    img = Image.open(filename)
+    img.save(os.path.join(outdir, name))
+
+def process_images_depracted(filename: str, outdir: str) -> None:
     IMG_SIDE = 416
     BLACK = (0, 0, 0)
     name = os.path.basename(filename)
@@ -53,7 +58,6 @@ def process_images(filename: str, outdir: str) -> None:
     new = Image.new(img.mode, (IMG_SIDE, IMG_SIDE), BLACK)
     new.paste(img, (0, 0))
     new.save(os.path.join(outdir, name))
-
 
 if __name__ == "__main__":
     TRAIN_ZIP_IN = 'train-MADAI'
