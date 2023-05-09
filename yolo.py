@@ -63,40 +63,50 @@ class YOLODetector(nn.Module):
         self.bce_loss = nn.BCELoss()
         # We set stride in forward()
         self.stride = None
-        # Turn array of (width, height) anchor sizes into a tensor of same shape
-        # Achieve that by flattening anchor sizes into a 1D list, turning into a tensor, then converting back into pairs
-        anchors = torch.tensor([x for anchor in anchors for x in anchor]).float().view(-1, 2)
-        # Anchor sizes are NOT a learning parameter, but we want them to persist, hence register_buffer
-        # TODO check if this can be removed safely
-        self.register_buffer('anchors', anchors)
-        # Copy of anchor sizes resized into 1 x anchors x 1 x 1 x Point2D, which matches the inference output shape
-        self.register_buffer('anchor_grid', anchors.clone().view(1, -1, 1, 1, 2))
+        # Turn array of (width, height) anchor sizes into a tensor
+        # Achieve that by flattening anchor sizes into a 1D list, turning into a tensor,
+        # then reshaping into (batches, anchors, width, height, values)
+        self.anchors = torch.tensor([x for anchor in anchors for x in anchor]).float().view(1, -1, 1, 1, 2)
+        self.are_anchors_scaled = True
+
+    def _make_grid(self, width: int, height: int, device: torch.device) -> torch.Tensor:
+        """
+        Create a 1x1x`height`x`width`x2 tensor containing coordinates of a grid.
+        [[[[0,0], [0,1]],
+          [[1,0], [1,1]]]] etc.
+        """
+        x, y = torch.meshgrid([torch.arange(width), torch.arange(height)], indexing='ij')
+        return torch.stack((x, y), dim=2).view(1, 1, width, height, 2).float().to(device)
 
     def forward(self, x: torch.Tensor, img_size: int) -> torch.Tensor:
         # Stride is pixels per cell
         self.stride = img_size // x.size(2)
         # Reshape output tensor
-        #   from: (batches, all_outputs, width, height)
-        #   into: (batches, anchors, width, height, outputs)
+        # from (batches, all_outputs, width, height) into (batches, anchors, width, height, outputs)
         batches, _, width, height = x.shape
         x = x.view(batches, self.num_anchors, self.num_outputs, width, height).permute(0, 1, 3, 4, 2).contiguous()
-        # In case of inference, present results directly
-        if not self.training:
-            # Create a 2D grid of cells (once only)
-            if self.grid.shape[2:4] != x.shape[2:4]:
-                vx, vy = torch.meshgrid([torch.arange(width), torch.arange(height)], indexing='ij')
-                self.grid = torch.stack((vx, vy), dim=2).view(1, 1, width, height, 2).float().to(x.device)
-            # Find final bounding box
-            # tx, ty, tw, th = predicted tensor
-            # cx, cy = grid offset from top-left (in cells)
-            # pw, ph = constant anchor sizes (in pixels)
-            # (x, y) = sigmoid((tx, ty)) + (cx, cy)
-            # (w, h) = (pw, ph) * exp((tw, th))
-            x[..., 0:2] = (x[..., 0:2].sigmoid() + self.grid) * self.stride # anchor x, y (in px, not cells)
-            x[..., 2:4] = torch.exp(x[..., 2:4]) * self.anchor_grid         # anchor width, height (in px)
-            x[..., 4:] = x[..., 4:].sigmoid()                               # confidence, class
-            # Final shape is just a list of outputs
-            x = x.view(batches, -1, self.num_outputs)
+        # Create a 2D grid of cells (once only)
+        if self.grid.shape[2:4] != x.shape[2:4]:
+            self.grid = self._make_grid(width, height, x.device)
+        # Scale anchors (once only)
+        if not self.are_anchors_scaled:
+            self.anchors /= self.stride
+            self.are_anchors_scaled = True
+        # Find final bounding box
+        # tx, ty, tw, th = predicted tensor
+        # cx, cy = grid offset from top-left (in cells)
+        # aw, ah = constant anchor sizes (in pixels)
+        # (x, y) = sigmoid((tx, ty)) + (cx, cy)
+        # (w, h) = exp((tw, th)) * (aw, ah)
+        # conf   = sigmoid(conf)
+        # cls    = sigmoid(cls)
+        x[..., 0:2] = (x[..., 0:2].sigmoid() + self.grid)               # anchor x, y (in cells)
+        x[..., 2:4] = torch.exp(x[..., 2:4]) * self.anchors             # anchor width, height (in cells)
+        x[..., 4:] = x[..., 4:].sigmoid()                               # confidence, class
+        # Turn bbox (in cells) to bbox (in pixels)
+        x[..., :4] *= self.stride
+        # Final shape is just a batched list of outputs
+        x = x.view(batches, -1, self.num_outputs)
         return x
 
 
@@ -145,4 +155,4 @@ class YOLOv3(nn.Module):
         out = self.yolo_2(self.conv_2_f(x), width)
         results.append(out)
         # Finally, results
-        return results if self.training else torch.cat(results, dim=1)
+        return torch.cat(results, dim=1)
