@@ -52,10 +52,7 @@ class YOLODataset(Dataset):
                 elements = line.split(",")
                 for i, e in enumerate(elements):
                     elements[i] = int(e)
-                if(index == 0 ):
-                    continue
-                else:
-                    bboxes.append(elements)
+                bboxes.append(elements)
                     
         if self.target_transform:
             for index in range(len(bboxes)):
