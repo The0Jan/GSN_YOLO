@@ -18,7 +18,7 @@ def confidence_threshold(predictions: torch.Tensor, objectness_confidence: float
     Filter out predictions that are below objectness confidence threshold.
     """
     filtered = predictions[predictions[..., 4] > objectness_confidence]
-    return filtered.view(predictions.size(0), -1, predictions.size(2))
+    return filtered.view(-1, predictions.size(1))
 
 
 def find_best_class(predictions: torch.Tensor) -> torch.Tensor:
@@ -56,13 +56,13 @@ def after_party(predictions, confidence=0.3, iou=0.5):
     """
     id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
     """
-    # Filter out low objectness confidence results
-    predictions = confidence_threshold(predictions, confidence)
     # Transform bbox from (x, y, w, h, ...) into (x1, y1, x2, y2, ...)
     predictions[..., :4] = transform_bbox(predictions[..., :4])
     all_results = predictions.new_empty(0, 8)
     # Process every image separately, NMS can't be vectorized
     for i, x in enumerate(predictions):
+        # Filter out low objectness confidence results
+        x = confidence_threshold(x, confidence)
         # Choose and save the most probable class
         x = find_best_class(x)
         # NMS
