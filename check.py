@@ -15,11 +15,12 @@ if __name__ == "__main__":
     #model = yolo.YOLOv3(80, 3)
     #summary(model, input_size=(3,416,416), device='cpu')
 
-    #for n, p in model.named_parameters():
-    #    print(n, p.numel())
+    for i, param in enumerate(model.named_parameters(), 0):
+        if i == 0:
+            print(param)
         
     load_model_parameters(path_to_darknet, model)
 
-    #for i, param in enumerate(model.named_parameters(), 0):
-    #    if i == 0:
-    #        print(param)
+    for i, param in enumerate(model.named_parameters(), 0):
+        if i == 0:
+            print(param)

@@ -6,6 +6,7 @@ from typing import List, Tuple
 
 
 def load_attrs(module: nn.Module, input_file, count: int, attrs: List[Tuple[str, bool]]):
+    t = 0
     for name, use_data in attrs:
         attr = getattr(module, name)
         if use_data:
@@ -14,7 +15,9 @@ def load_attrs(module: nn.Module, input_file, count: int, attrs: List[Tuple[str,
             attr_data = attr
         #Cast the loaded attributes into dims of model weights & copy the data to model.
         attr_data.copy_(torch.from_numpy(np.fromfile(input_file, dtype=np.float32, count=count)).view_as(attr_data))
+        t += count
         setattr(module, name, attr)
+    print(f'{module._get_name()}: {t}')
 
 
 def load_model_parameters(weight_file_name: str, model: nn.Module):
