@@ -106,22 +106,3 @@ def visualize_results(image_tensor, targets):
     
     Image.fromarray(image).show()
     return image
-
-###########################
-check = False
-if check:
-    train_path_anno = 'test-new/annotations'
-    train_path_img =  'test-new/images'
-
-    image_size = (416, 416)
-    img_transform = Compose([Resize(image_size), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-
-    yolo_dataset = YOLODataset(train_path_anno, train_path_img, transform=img_transform )
-
-    for i in range(10): 
-        print(yolo_dataset.annotations_list[i], yolo_dataset.image_list[i])
-    #tensor_image, org_size, label = yolo_dataset[8]
-    #image = tensor_to_image(tensor_image)
-    #image.show()
-    #print(org_size)
-    #print(label)

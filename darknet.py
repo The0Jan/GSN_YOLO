@@ -59,8 +59,8 @@ class Darknet53(nn.Module):
     def __init__(self, in_channels) -> None:
         super().__init__()
         # Save results of intermediate blocks for YOLO heads
-        self.post_block_3 = None
-        self.post_block_4 = None
+        self.post_block_3: torch.Tensor
+        self.post_block_4: torch.Tensor
         # Starting point
         self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
         # Residual blocks

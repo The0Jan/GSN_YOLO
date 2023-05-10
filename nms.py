@@ -52,7 +52,7 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     return results
 
 
-def after_party(predictions, confidence=0.3, iou=0.5):
+def after_party(predictions: torch.Tensor, confidence=0.3, iou=0.5):
     """
     id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
     """
