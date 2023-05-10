@@ -20,11 +20,13 @@ if __name__ == "__main__":
 
     train_path_anno = 'test-new/annotations'
     train_path_img =  'test-new/images'
-    image_size = (416, 416)
-    img_transform = Compose([Resize(image_size), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    yolo_dataset = YOLODataset(train_path_anno, train_path_img, transform=img_transform)
+    yolo_dataset = YOLODataset(train_path_anno, train_path_img)
 
-    x, _, _, _ = yolo_dataset[0]
+    x, path, _, bboxes = yolo_dataset[0]
+    x = x.unsqueeze(0)
+    print(path)
+    print(bboxes)
+    print(x.shape)
     y = model(x)
     print(y.shape)
     z = after_party(y)

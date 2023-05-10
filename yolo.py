@@ -29,7 +29,7 @@ class FinalConvolutional(nn.Module):
         super().__init__()
         self.block = nn.Sequential(
             darknet.Convolutional(in_channels, mid_channels, kernel_size=3),
-            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=True),
+            nn.Conv2d(mid_channels, out_channels, kernel_size=1, padding=0, bias=True),
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -40,10 +40,10 @@ class FinalConvolutional(nn.Module):
 class ConvolutionalUpsample(nn.Module):
     """
     """
-    def __init__(self, in_channels: int, out_channels: int, kernel_size=1, scale_factor=2, mode='nearest') -> None:
+    def __init__(self, in_channels: int, out_channels: int, scale_factor=2, mode='nearest') -> None:
         super().__init__()
         self.block = nn.Sequential(
-            darknet.Convolutional(in_channels, out_channels, kernel_size=kernel_size),
+            darknet.Convolutional(in_channels, out_channels, kernel_size=1),
             nn.Upsample(scale_factor=scale_factor, mode=mode),
         )
 
@@ -59,6 +59,7 @@ class YOLODetector(nn.Module):
         super().__init__()
         self.num_outputs = num_classes + 4 + 1
         self.num_anchors = len(anchors)
+        self.grid = None
         self.mse_loss = nn.MSELoss()
         self.bce_loss = nn.BCELoss()
         # We set stride in forward()
@@ -86,7 +87,7 @@ class YOLODetector(nn.Module):
         batches, _, width, height = x.shape
         x = x.view(batches, self.num_anchors, self.num_outputs, width, height).permute(0, 1, 3, 4, 2).contiguous()
         # Create a 2D grid of cells (once only)
-        if self.grid.shape[2:4] != x.shape[2:4]:
+        if self.grid is None or self.grid.shape[2:4] != x.shape[2:4]:
             self.grid = self._make_grid(width, height, x.device)
         # Scale anchors (once only)
         if not self.are_anchors_scaled:
@@ -121,16 +122,18 @@ class YOLOv3(nn.Module):
         ### Features for 13x13 grid - for detecing large objects
         self.conv_block_0 = ConvolutionalBlock(in_channels=1024, mid_channels=1024, out_channels=512, repeat=5)
         self.conv_0_f = FinalConvolutional(in_channels=512, mid_channels=1024, out_channels=self.predictions_total)
-        self.yolo_0 = YOLODetector([(116, 90), (156, 198), (373, 326)], self.num_classes)
         ### Features for 26x26 grid - for detecting medium objects
         self.conv_and_upsample_1 = ConvolutionalUpsample(512, 256)
         self.conv_block_1 = ConvolutionalBlock(in_channels=512+256, mid_channels=512, out_channels=256, repeat=5)
         self.conv_1_f = FinalConvolutional(in_channels=256, mid_channels=512, out_channels=self.predictions_total)
-        self.yolo_1 = YOLODetector([(30, 61), (62, 45), (59, 119)], self.num_classes)
         ### Features for 52x52 grid - for detecting small objects
         self.conv_and_upsample_2 = ConvolutionalUpsample(256, 128)
         self.conv_block_2 = ConvolutionalBlock(in_channels=256+128, mid_channels=256, out_channels=128, repeat=5)
         self.conv_2_f = FinalConvolutional(in_channels=128, mid_channels=256, out_channels=self.predictions_total)
+        ### Final conv layers
+        ### Helper detector layers
+        self.yolo_0 = YOLODetector([(116, 90), (156, 198), (373, 326)], self.num_classes)
+        self.yolo_1 = YOLODetector([(30, 61), (62, 45), (59, 119)], self.num_classes)
         self.yolo_2 = YOLODetector([(10, 13), (16, 30), (33, 23)], self.num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

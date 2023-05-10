@@ -17,7 +17,6 @@ def load_attrs(module: nn.Module, input_file, count: int, attrs: List[Tuple[str,
         attr_data.copy_(torch.from_numpy(np.fromfile(input_file, dtype=np.float32, count=count)).view_as(attr_data))
         t += count
         setattr(module, name, attr)
-    print(f'{module._get_name()}: {t}')
 
 
 def load_model_parameters(weight_file_name: str, model: nn.Module):

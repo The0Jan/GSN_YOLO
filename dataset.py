@@ -6,9 +6,6 @@ from PIL import Image
 import cv2
 import numpy as np
 
-def loader(path):
-    return Image.open(path).convert('RGB')
-
 class YOLODataset(Dataset):
     def __init__(
                 self,
@@ -26,7 +23,14 @@ class YOLODataset(Dataset):
         self.image_list = os.listdir(image_dir)
         self.annotations_list = os.listdir(annotations_dir)
 
-        self.transform = transform
+        if transform is None:
+            self.transform = Compose([
+                Resize(image_size),
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
+        else:
+            self.transform = transform
         self.target_transform = target_transform
 
     def __len__(self):
@@ -39,7 +43,7 @@ class YOLODataset(Dataset):
         img_path = os.path.join(self.img_dir, self.image_list[idx])
         anno_path = os.path.join(self.annotations_dir, self.annotations_list[idx])
         bboxes = []
-        image = loader(img_path)
+        image = Image.open(img_path).convert('RGB')
         org_size = image.size
         
         if self.transform:
