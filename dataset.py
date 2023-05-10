@@ -80,6 +80,36 @@ def resize_with_respect(img: Image.Image) -> Image.Image:
         new.paste(img, (int((IMG_SIDE -img.width)/2), 0))
     return new
 
+def  resize_bbs(org_size, new_size, bbs):
+    ratio = org_size[0]/org_size[1]
+    print(bbs)
+    
+    if ratio > 1:
+        s_size = int(new_size[0]), int(new_size[1] / ratio)
+    else:
+        s_size = int(new_size[0] * ratio), int(new_size[1])
+        
+    bbs = scale_bbs(org_size, s_size, bbs)
+    if ratio > 1:
+        bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
+        bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
+    else:
+        bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
+        bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
+    return bbs
+
+def add_cord(corn, new_s, s_size):
+    return int(corn +  (new_s- s_size)/2)
+
+def  scale_bbs(org_size, new_size, bbs):
+    Rx = new_size[0]/org_size[0]
+    Ry = new_size[1]/org_size[1]
+    bbs[1] = round(bbs[1]*Rx)
+    bbs[2] = round(bbs[2]*Ry)
+    bbs[3] = round(bbs[3]*Rx)
+    bbs[4] = round(bbs[4]*Ry)
+    return bbs
+
 def tensor_to_image(tensor_image): 
     inv_imagenet_normalize = Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225], std=[1./0.229, 1./0.224, 1./0.225])
     to_pil_image = Compose([inv_imagenet_normalize, ToPILImage()])
