@@ -1,5 +1,7 @@
 import torch
 import dataset
+import gdown
+import zipfile
 import pytorch_lightning as pl
 from torchvision.transforms import Compose
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize
@@ -22,6 +24,8 @@ class MadaiModule(pl.LightningDataModule):
         self.test_anno_dir  = test_anno_dir
         self.test_img_dir   = test_img_dir
         
+        self.g_id = "1sDqxwOeROzsfvW2d_K7O_akEyLhDcKa3"
+        self.file_name = "data.zip"
         self.img_transform  = img_transform
         if img_transform is None:
             self.img_transform = self.get_img_transform()
@@ -32,8 +36,11 @@ class MadaiModule(pl.LightningDataModule):
 
     def prepare_data(self):
         #pobieranie odpowiednich zipów 
-        return 0
-
+        gdown.download(id = self.g_id, output=self.file_name)
+        ziper = zipfile.ZipFile(self.file_name)
+        ziper.extractall()
+        ziper.close()
+        
     def setup(self, stage=None):
         # called on every GPU
         # use our dataset and defined transformations
@@ -70,8 +77,6 @@ class MadaiModule(pl.LightningDataModule):
 def  resize_bbs(org_size, new_size, bbs):
     Rx = new_size[0]/org_size[0]
     Ry = new_size[1]/org_size[1]
-    print(Rx, Ry)
-    print(bbs)
     bbs[1] = round(bbs[1]*Rx)
     bbs[2] = round(bbs[2]*Ry)
     bbs[3] = round(bbs[3]*Rx)
@@ -80,6 +85,7 @@ def  resize_bbs(org_size, new_size, bbs):
 
 if __name__ == "__main__":
     dm = MadaiModule()
+    #dm.prepare_data()
     dm.setup()
     
     img_tensor, img_path, org_size, target = dm.dataset_train[10]
