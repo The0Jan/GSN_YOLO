@@ -18,7 +18,7 @@ if __name__ == "__main__":
     load_model_parameters(path_to_yolo, model)
 
     train_path_anno = 'test-new/annotations'
-    train_path_img = 'test-MADAI/aircraft'
+    train_path_img = 'test-new/images'
     yolo_dataset = YOLODataset(train_path_anno, train_path_img)
 
     x, path, _, bboxes = yolo_dataset[0]
