@@ -80,23 +80,35 @@ def resize_with_respect(img: Image.Image) -> Image.Image:
         new.paste(img, (int((IMG_SIDE -img.width)/2), 0))
     return new
 
+
+
 def  resize_bbs(org_size, new_size, bbs):
     ratio = org_size[0]/org_size[1]
     print(bbs)
-    
+    # Scale
     if ratio > 1:
         s_size = int(new_size[0]), int(new_size[1] / ratio)
     else:
-        s_size = int(new_size[0] * ratio), int(new_size[1])
-        
+        s_size = int(new_size[0] * ratio), int(new_size[1]) 
     bbs = scale_bbs(org_size, s_size, bbs)
+    
+    # Move coordinates
     if ratio > 1:
         bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
         bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
     else:
         bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
         bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
+       
+    # Normalize
+    # Wyłączone do testów inv_resize
+    ##bbs = norm(bbs, new_size[0])
     return bbs
+
+def norm(cords, img_side):
+    for i in range(1,len(cords)):
+        cords[i] = cords[i]/img_side
+    return cords
 
 def add_cord(corn, new_s, s_size):
     return int(corn +  (new_s- s_size)/2)
@@ -115,6 +127,30 @@ def tensor_to_image(tensor_image):
     to_pil_image = Compose([inv_imagenet_normalize, ToPILImage()])
     image = to_pil_image(tensor_image)
     return image
+
+def  inv_resize_bbs(org_size, new_size, bbs):
+    ratio = new_size[0]/new_size[1]
+    
+    print(bbs)
+    if ratio > 1:
+        print('dupa',            new_size[1],org_size[1])
+        bbs[2] = add_cord(bbs[2],new_size[1],org_size[1])
+        bbs[4] = add_cord(bbs[4],new_size[1],org_size[1])
+    else:
+        print('pupa',new_size[0],s_size[0])
+        bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
+        bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
+    # Scale
+    if ratio > 1:
+        s_size = int(new_size[0]), int(new_size[1] / ratio)
+    else:
+        s_size = int(new_size[0] * ratio), int(new_size[1]) 
+    bbs = scale_bbs(org_size, s_size, bbs)
+    
+    print(bbs)
+    # Move coordinates
+
+    return bbs
 
 def draw_box(image, target):
     target_class = target[0]
@@ -142,10 +178,15 @@ def draw_box(image, target):
     cv2.putText(image, label, (corner_1[0], corner_1[1] + text_size[1] + 4), cv2.FONT_ITALIC, 1, [255,255,255], 1)
     return image
 
-def visualize_results(image_tensor, targets):
-    image = np.array(tensor_to_image(image_tensor))
-    
+def visualize_results(img_path, targets):
+    image = Image.open(img_path).convert('RGB')
+    cur_size = image.width, image.height
+
+    ### Pracuje nadal na starym formacie bo łatwiej mi sprawdzić czy resize i inv_resize mi działają na obrazach
+    image = np.array(image)
+    print(cur_size)
     for target in targets:
+        target = inv_resize_bbs((416,416), cur_size, target)
         image = draw_box(image, target)
     
     Image.fromarray(image).show()
