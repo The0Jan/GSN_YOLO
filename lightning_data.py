@@ -4,7 +4,7 @@ import gdown
 import zipfile
 import pytorch_lightning as pl
 from torchvision.transforms import Compose
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
 from torch.utils.data import DataLoader, random_split
 
 class MadaiModule(pl.LightningDataModule):
@@ -69,19 +69,11 @@ class MadaiModule(pl.LightningDataModule):
         return DataLoader(self.dataset_val, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=2)
     
     def get_img_transform(self):
-        return Compose([Resize(self.image_size), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        return Compose([Lambda(dataset.resize_with_respect), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
         
     def get_target_transform(self):
-        return resize_bbs
+        return dataset.resize_bbs
 
-def  resize_bbs(org_size, new_size, bbs):
-    Rx = new_size[0]/org_size[0]
-    Ry = new_size[1]/org_size[1]
-    bbs[1] = round(bbs[1]*Rx)
-    bbs[2] = round(bbs[2]*Ry)
-    bbs[3] = round(bbs[3]*Rx)
-    bbs[4] = round(bbs[4]*Ry)
-    return bbs
 
 if __name__ == "__main__":
     dm = MadaiModule()
