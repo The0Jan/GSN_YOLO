@@ -1,6 +1,6 @@
 import os
 from torch.utils.data import Dataset
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize
+from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
 from torchvision.transforms import ToPILImage
 from PIL import Image
 import cv2
@@ -25,7 +25,7 @@ class YOLODataset(Dataset):
 
         if transform is None:
             self.transform = Compose([
-                Resize(image_size),
+                Resize(self.image_size),
                 ToTensor(),
                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
             ])
@@ -64,6 +64,21 @@ class YOLODataset(Dataset):
              
         return image, img_path, org_size, bboxes
     
+def resize_with_respect(img: Image.Image) -> Image.Image:
+    IMG_SIDE = 416
+    GREY = (128, 128, 128)
+    ratio = img.width / img.height
+    if ratio > 1:
+        new_size = int(IMG_SIDE), int(IMG_SIDE / ratio)
+    else:
+        new_size = int(IMG_SIDE * ratio), int(IMG_SIDE)
+    img = img.resize(new_size, Image.Resampling.LANCZOS)
+    new = Image.new(img.mode, (IMG_SIDE, IMG_SIDE), GREY)
+    if ratio > 1:
+        new.paste(img, (0, int((IMG_SIDE -img.height)/2)))
+    else:
+        new.paste(img, (int((IMG_SIDE -img.width)/2), 0))
+    return new
 
 def tensor_to_image(tensor_image): 
     inv_imagenet_normalize = Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225], std=[1./0.229, 1./0.224, 1./0.225])
@@ -85,13 +100,12 @@ def draw_box(image, target):
     }
     
     label, color = classes[target_class]
+    
     # Drawing box on image
     cv2.rectangle(image, corner_1, corner_2, color, 2)
 
-
     # Wiriting what class
     label = "{0}".format(label)
-    
     text_size = cv2.getTextSize(label, cv2.FONT_ITALIC, 1, 1)[0]
     corner_2 = corner_1[0] + text_size[0] + 4, corner_1[1] + text_size[1] + 4
     cv2.rectangle(image, corner_1, corner_2, color, -1)
