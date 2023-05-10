@@ -67,7 +67,7 @@ class YOLODetector(nn.Module):
         # Achieve that by flattening anchor sizes into a 1D list, turning into a tensor,
         # then reshaping into (batches, anchors, width, height, values)
         self.anchors = torch.tensor([x for anchor in anchors for x in anchor]).float().view(1, -1, 1, 1, 2)
-        self.are_anchors_scaled = True
+        self.are_anchors_scaled = False
 
     def _make_grid(self, width: int, height: int, device: torch.device) -> torch.Tensor:
         """
@@ -100,9 +100,9 @@ class YOLODetector(nn.Module):
         # (w, h) = exp((tw, th)) * (aw, ah)
         # conf   = sigmoid(conf)
         # cls    = sigmoid(cls)
-        x[..., 0:2] = (x[..., 0:2].sigmoid() + self.grid)               # anchor x, y (in cells)
+        x[..., 0:2] = torch.sigmoid(x[..., 0:2]) + self.grid            # anchor x, y (in cells)
         x[..., 2:4] = torch.exp(x[..., 2:4]) * self.anchors             # anchor width, height (in cells)
-        x[..., 4:] = x[..., 4:].sigmoid()                               # confidence, class
+        x[..., 4:] = torch.sigmoid(x[..., 4:])                          # confidence, class
         # Turn bbox (in cells) to bbox (in pixels)
         x[..., :4] *= self.stride
         # Final shape is just a batched list of outputs
@@ -155,4 +155,4 @@ class YOLOv3(nn.Module):
         out = self.yolo_2(self.conv_2_f(x), width)
         results.append(out)
         # Finally, results
-        return torch.cat(results, dim=1)
+        return torch.tensor(results) if self.training else torch.cat(results, dim=1)
