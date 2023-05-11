@@ -26,11 +26,11 @@ def main():
     
     yolo_model = lightning_model.YoloModule(8)
     
-    data_model = lightning_data.MadaiModule()
+    data_model = lightning_data.MadaiModule(batch_size=8)
     data_model.setup()
     
 
-    trainer = pl.Trainer(devices=1, max_epochs=3, callbacks=[checkpoint_callback, early_stop_callback])
+    trainer = pl.Trainer(devices = 1, max_epochs=3, callbacks=[checkpoint_callback, early_stop_callback])
 
     trainer.fit(model = yolo_model, datamodule=data_model)
 

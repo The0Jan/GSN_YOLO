@@ -13,8 +13,8 @@ class YoloModule(pl.LightningModule):
         
         self.model = yolo.YOLOv3(self.num_classes)
         l_w.load_model_parameters(weights_file, self.model.darknet)
-        #for param in self.model.darknet.parameters():
-        #    param.requires_grad = False
+        for param in self.model.darknet.parameters():
+            param.requires_grad = False
         
 
     def forward(self, x, targets):
