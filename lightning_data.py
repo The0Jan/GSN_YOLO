@@ -8,7 +8,7 @@ from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
 from torch.utils.data import DataLoader, random_split
 
 class MadaiModule(pl.LightningDataModule):
-    def __init__(self, batch_size = 32, 
+    def __init__(self, batch_size = 16, 
                  image_size = (416, 416),
                  train_anno_dir = 'train-new/annotations', 
                  train_img_dir = 'train-new/images',
@@ -36,10 +36,11 @@ class MadaiModule(pl.LightningDataModule):
 
     def prepare_data(self):
         #pobieranie odpowiednich zipów 
-        gdown.download(id = self.g_id, output=self.file_name)
-        ziper = zipfile.ZipFile(self.file_name)
-        ziper.extractall()
-        ziper.close()
+        #gdown.download(id = self.g_id, output=self.file_name)
+        #ziper = zipfile.ZipFile(self.file_name)
+        #ziper.extractall()
+        #ziper.close()
+        return 0
         
     def setup(self, stage=None):
         # called on every GPU
@@ -60,13 +61,13 @@ class MadaiModule(pl.LightningDataModule):
                                                image_size = self.image_size)
         
     def train_dataloader(self):
-        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=2)
+        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=2, collate_fn= _collate_fn)
 
     def test_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=2)
+        return DataLoader(self.dataset_test, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=2, collate_fn= _collate_fn)
 
     def val_dataloader(self):
-        return DataLoader(self.dataset_val, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=2)
+        return DataLoader(self.dataset_val, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=2, collate_fn= _collate_fn)
     
     def get_img_transform(self):
         return Compose([Lambda(dataset.resize_with_respect), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
@@ -74,14 +75,48 @@ class MadaiModule(pl.LightningDataModule):
     def get_target_transform(self):
         return dataset.resize_bbs
 
+def _collate_fn(batch):
+    """_summary_
+        img_tensor, img_path, org_size, target
+    Args:
+        batch (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    image_batch = torch.stack([elem[0] for elem in batch], 0)
+    img_path_batch = [elem[2] for elem in batch]
+    org_size_batch = [elem[3] for elem in batch]
+    
+    #annotation_batch = torch.Tensor([assign_batch_index_to_bbx(annotations, batch_index) for batch_index, annotations in enumerate([elem[1] for elem in batch])]),
+    annotation_batch = torch.cat(
+        [
+            torch.cat(
+                (
+                    torch.ones(len(annotations), 1) * batch_index,
+                    torch.Tensor(annotations),
+                ),
+                1,
+            )
+            for batch_index, annotations in enumerate([elem[1] for elem in batch])
+        ],
+        0,
+    )
+
+    return (image_batch, annotation_batch, img_path_batch, org_size_batch) 
+
+def assign_batch_index_to_bbx(target, batch_index):
+    for i, bbx in enumerate(target):
+        target[i] = [batch_index, *bbx]
+    return target
 
 if __name__ == "__main__":
     dm = MadaiModule()
     #dm.prepare_data()
     dm.setup()
-    
-    img_tensor, img_path, org_size, target = dm.dataset_test[0]
-    target = [[0, 27, 114, 391, 237,4,0,4]]
-    dataset.visualize_results(img_path, target)
+    it = iter(dm.test_dataloader())
+    img_tensor, target, img_path, org_size = next(it)
+    #target = [[0, 27, 114, 391, 237,4,0,4]]
+    #dataset.visualize_results(img_path, target)
     
     print(img_path, org_size, target)

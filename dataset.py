@@ -62,7 +62,7 @@ class YOLODataset(Dataset):
             for index in range(len(bboxes)):
                 bboxes[index] = self.target_transform(org_size, self.image_size, bboxes[index])
              
-        return image, img_path, org_size, bboxes
+        return image, bboxes, img_path, org_size,
     
 def resize_with_respect(img: Image.Image) -> Image.Image:
     IMG_SIDE = 416
