@@ -1,5 +1,6 @@
 test*
 train*
-__pycache__
+__pycache__/
 weights/
-lightning_logs*
+lightning_logs/
+model/

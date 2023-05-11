@@ -7,15 +7,12 @@ from torchvision.transforms import Compose
 from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
 from torch.utils.data import DataLoader, random_split
 
-class MadaiModule(pl.LightningDataModule):
-    def __init__(self, batch_size = 16, 
-                 image_size = (416, 416),
-                 train_anno_dir = 'train-new/annotations', 
-                 train_img_dir = 'train-new/images',
-                 test_anno_dir = 'test-new/annotations',
-                 test_img_dir = 'test-new/images',
-                 img_transform = None,
-                 target_transform = None):
+
+class MADAIDataModule(pl.LightningDataModule):
+    def __init__(self, batch_size = 16, image_size = (416, 416),
+                 train_anno_dir = 'train-new/annotations', train_img_dir = 'train-new/images',
+                 test_anno_dir = 'test-new/annotations', test_img_dir = 'test-new/images',
+                 img_transform = None, target_transform = None) -> None:
         super().__init__()
         self.batch_size     = batch_size
         self.image_size     = image_size
@@ -75,6 +72,7 @@ class MadaiModule(pl.LightningDataModule):
     def get_target_transform(self):
         return dataset.resize_bbs
 
+
 def _collate_fn(batch):
     """_summary_
         img_tensor, img_path, org_size, target
@@ -105,18 +103,8 @@ def _collate_fn(batch):
 
     return (image_batch, annotation_batch, img_path_batch, org_size_batch) 
 
+
 def assign_batch_index_to_bbx(target, batch_index):
     for i, bbx in enumerate(target):
         target[i] = [batch_index, *bbx]
     return target
-
-if __name__ == "__main__":
-    dm = MadaiModule()
-    #dm.prepare_data()
-    dm.setup()
-    it = iter(dm.test_dataloader())
-    img_tensor, target, img_path, org_size = next(it)
-    #target = [[0, 27, 114, 391, 237,4,0,4]]
-    #dataset.visualize_results(img_path, target)
-    
-    print(img_path, org_size, target)

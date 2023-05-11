@@ -96,6 +96,7 @@ class YOLODetector(nn.Module):
         # Scale anchors (once only)
         if not self.are_anchors_scaled:
             self.anchors /= self.stride
+            self.anchors = self.anchors.to(x.device)
             self.are_anchors_scaled = True
         # Sigmoids
         x[..., 0:2] = torch.sigmoid(x[..., 0:2])
