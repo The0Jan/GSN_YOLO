@@ -1,4 +1,6 @@
+from typing import Any, Optional
 import pytorch_lightning as pl
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 import yolo
 import wandb
@@ -28,6 +30,24 @@ class YOLOv3Module(pl.LightningModule):
         self.log("train_loss", loss)        
         return loss
 
+    def common_test_valid_step(self, batch, batch_idx):
+        img_tensor, target, _, _ = batch
+        pred, loss = self.model(img_tensor, target)
+        
+        # liczenie acc
+        
+        self.log('test_acc', acc, prog_bar=True)
+        self.log('test_loss', loss, prog_bar=True)
+        return loss, acc
+
+    def test_step(self, batch, batch_idx):
+        loss, acc = self.common_test_valid_step(batch, batch_idx)
+        return loss, acc
+
+    def validation_step(self, batch, batch_idx):
+        loss, acc = self.common_test_valid_step(batch, batch_idx)
+        return loss, acc
+
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate )
         return optimizer

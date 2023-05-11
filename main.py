@@ -9,7 +9,7 @@ import torch
 
 def main():
     MODEL_CKPT_PATH = 'model/'
-    MODEL_CKPT = 'model-{epoch:02d}-{val_loss:.2f}'
+    MODEL_CKPT = 'model-{epoch:02d}-{train_loss:.2f}'
 
     checkpoint_callback = ModelCheckpoint(
         monitor='train_loss',
