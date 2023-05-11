@@ -80,8 +80,8 @@ if __name__ == "__main__":
     #dm.prepare_data()
     dm.setup()
     
-    img_tensor, img_path, org_size, target = dm.dataset_test[1]
-    #target = [[0, 10,10,100,100,4,1,4]]
+    img_tensor, img_path, org_size, target = dm.dataset_test[0]
+    target = [[0, 27, 114, 391, 237,4,0,4]]
     dataset.visualize_results(img_path, target)
     
     print(img_path, org_size, target)

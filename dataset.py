@@ -84,12 +84,14 @@ def resize_with_respect(img: Image.Image) -> Image.Image:
 
 def  resize_bbs(org_size, new_size, bbs):
     ratio = org_size[0]/org_size[1]
-    print(bbs)
-    # Scale
+    
+    # Get scale
     if ratio > 1:
         s_size = int(new_size[0]), int(new_size[1] / ratio)
     else:
         s_size = int(new_size[0] * ratio), int(new_size[1]) 
+    
+    # Scale coordinates
     bbs = scale_bbs(org_size, s_size, bbs)
     
     # Move coordinates
@@ -102,7 +104,7 @@ def  resize_bbs(org_size, new_size, bbs):
        
     # Normalize
     # Wyłączone do testów inv_resize
-    ##bbs = norm(bbs, new_size[0])
+    bbs = norm(bbs, new_size[0])
     return bbs
 
 def norm(cords, img_side):
@@ -131,31 +133,30 @@ def tensor_to_image(tensor_image):
 def  inv_resize_bbs(org_size, new_size, bbs):
     ratio = new_size[0]/new_size[1]
     
-    print(bbs)
+    # Get Scale
     if ratio > 1:
-        print('dupa',            new_size[1],org_size[1])
-        bbs[2] = add_cord(bbs[2],new_size[1],org_size[1])
-        bbs[4] = add_cord(bbs[4],new_size[1],org_size[1])
+        s_size = int(org_size[0]), int(org_size[1] / ratio)
     else:
-        print('pupa',new_size[0],s_size[0])
-        bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
-        bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
-    # Scale
-    if ratio > 1:
-        s_size = int(new_size[0]), int(new_size[1] / ratio)
-    else:
-        s_size = int(new_size[0] * ratio), int(new_size[1]) 
-    bbs = scale_bbs(org_size, s_size, bbs)
-    
-    print(bbs)
+        s_size = int(org_size[0] * ratio), int(org_size[1]) 
+        
     # Move coordinates
-
+    if ratio > 1:
+        bbs[2] = sub_cord(bbs[2],org_size[1],s_size[1])
+        bbs[4] = sub_cord(bbs[4],org_size[1],s_size[1])
+    else:
+        bbs[1] = sub_cord(bbs[1],org_size[0],s_size[0])
+        bbs[3] = sub_cord(bbs[3],org_size[0],s_size[0])
+    
+    #Scale coordinates
+    bbs = scale_bbs(s_size, new_size, bbs)  
     return bbs
 
-def draw_box(image, target):
-    target_class = target[0]
-    corner_1 = tuple(target[1:3])
-    corner_2 = tuple(target[3:5])
+def sub_cord(corn, new_s, s_size):
+    return int(corn -  (new_s- s_size)/2)
+
+def draw_box(image, bbx, target_class):
+    corner_1 = tuple(bbx[0:2])
+    corner_2 = tuple(bbx[2:4])
     
     classes = {
         0:("aircraft",[76,155,78]), 
@@ -181,13 +182,12 @@ def draw_box(image, target):
 def visualize_results(img_path, targets):
     image = Image.open(img_path).convert('RGB')
     cur_size = image.width, image.height
-
-    ### Pracuje nadal na starym formacie bo łatwiej mi sprawdzić czy resize i inv_resize mi działają na obrazach
     image = np.array(image)
-    print(cur_size)
+    
     for target in targets:
-        target = inv_resize_bbs((416,416), cur_size, target)
-        image = draw_box(image, target)
+        bbx = target[0:5]
+        bbx = inv_resize_bbs((416,416), cur_size, bbx)
+        image = draw_box(image, bbx[1:], target[6])
     
     Image.fromarray(image).show()
     return image
