@@ -35,7 +35,6 @@ class YOLODataset(Dataset):
             for line in anno_obj.readlines():
                 elements = [int(e) for e in line.split(",")]
                 bboxes.append(elements)
-            bboxes.pop(0)
         if self.target_transform is not None:
             bboxes = [self.target_transform(org_size, self.image_size, b) for b in bboxes]
         return image, bboxes, img_path, org_size,
