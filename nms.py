@@ -52,7 +52,7 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     return results
 
 
-def after_party(predictions: torch.Tensor, confidence=0.3, iou=0.5):
+def after_party(predictions: torch.Tensor, confidence=0.5, iou=0.5):
     """
     id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
     """
@@ -73,23 +73,3 @@ def after_party(predictions: torch.Tensor, confidence=0.3, iou=0.5):
         # Save results
         all_results = torch.cat([all_results, result_preds_with_indices], dim=0)
     return all_results
-
-
-# testing
-if __name__ == "__main__":
-    tval = torch.tensor([
-        [
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-        ],
-        [
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-        ],
-        [
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-            [2., 2., 2., 2., 0.9, 0.1, 0.8],
-        ],
-    ])
-    z = after_party(tval)
-    print(z)

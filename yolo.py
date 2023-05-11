@@ -158,8 +158,8 @@ class YOLODetector(nn.Module):
         ious = predictions.new_zeros(obj_mask.shape).float()
         # Unpack ground truths
         img_idx, t_class = targets[..., :2].long().t()
-        # Box coordinates are normalized to (0, 1), but we want (0, GRID_SIZE)
-        targets[..., 2:6] *= GRID_SIZE
+        # Box coordinates are scaled to (0, 416), but we want (0, GRID_SIZE)
+        targets[..., 2:6] /= self.stride
         cxy, bwh = xyxy2xywh(targets[..., 2:6])
         # IoUs of anchors and true boxes
         # Anchors are in (w, h) format, we want (x1, y1, x2, y2), so let's move true boxes to 0, 0
@@ -199,8 +199,8 @@ class YOLODetector(nn.Module):
         class_mask[img_idx, best_anchors, gij[..., 1], gij[..., 0]] = (pred_class == t_class).float()
         # box_iou gives cartesian product, but we only want comparisons with the same row, so we use diagonal
         ious[img_idx, best_anchors, gij[..., 1], gij[..., 0]] = torchvision.ops.box_iou(xywh2xyxy(pred_xywh), targets[..., 2:6]).diag()
-        # Revert multiplication (otherwise targets end up modified)
-        targets[..., 2:6] /= GRID_SIZE
+        # Revert from (0, GRID_SIZE) to -> (0, 416) (otherwise targets end up modified)
+        targets[..., 2:6] *= self.stride
         return truths, obj_mask, noobj_mask, class_mask, ious
 
 
@@ -228,7 +228,7 @@ class YOLOv3(nn.Module):
         self.in_channels = in_channels
         self.predictions_total = bounding_boxes * (4 + 1 + self.num_classes)
         ### Backbone
-        self.darknet = darknet.Darknet53(in_channels)
+        self.backbone = darknet.Darknet53(in_channels)
         ### Features for 13x13 grid - for detecing large objects
         self.conv_block_0 = ConvolutionalBlock(in_channels=1024, mid_channels=1024, out_channels=512, repeat=5)
         self.conv_0_f = FinalConvolutional(in_channels=512, mid_channels=1024, out_channels=self.predictions_total)
@@ -240,34 +240,34 @@ class YOLOv3(nn.Module):
         self.conv_and_upsample_2 = ConvolutionalUpsample(256, 128)
         self.conv_block_2 = ConvolutionalBlock(in_channels=256+128, mid_channels=256, out_channels=128, repeat=5)
         self.conv_2_f = FinalConvolutional(in_channels=128, mid_channels=256, out_channels=self.predictions_total)
-        ### Helper detector layers
-        self.yolo_0 = YOLODetector([(116, 90), (156, 198), (373, 326)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
-        self.yolo_1 = YOLODetector([(30, 61), (62, 45), (59, 119)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
-        self.yolo_2 = YOLODetector([(10, 13), (16, 30), (33, 23)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
+        ### Head detector layers
+        self.head_0 = YOLODetector([(116, 90), (156, 198), (373, 326)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
+        self.head_1 = YOLODetector([(30, 61), (62, 45), (59, 119)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
+        self.head_2 = YOLODetector([(10, 13), (16, 30), (33, 23)], self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
 
     def forward(self, x: torch.Tensor, targets: torch.Tensor) -> Tuple[torch.Tensor, float]:
         results = []
         total_loss = 0
         width = x.size(2)
         ### Backbone
-        x = self.darknet(x)
+        x52, x26, x13 = self.backbone(x)
         ### 13x13
-        x = self.conv_block_0(x)
-        out, loss = self.yolo_0(self.conv_0_f(x), targets, width)
+        x = self.conv_block_0(x13)
+        out, loss = self.head_0(self.conv_0_f(x), targets, width)
         total_loss += loss
         results.append(out)
         ### 26x26
         x = self.conv_and_upsample_1(x)
-        x = torch.cat([x, self.darknet.post_block_4], dim=1)
+        x = torch.cat([x, x26], dim=1)
         x = self.conv_block_1(x)
-        out, loss = self.yolo_1(self.conv_1_f(x), targets, width)
+        out, loss = self.head_1(self.conv_1_f(x), targets, width)
         total_loss += loss
         results.append(out)
         ### 52x52
         x = self.conv_and_upsample_2(x)
-        x = torch.cat([x, self.darknet.post_block_3], dim=1)
+        x = torch.cat([x, x52], dim=1)
         x = self.conv_block_2(x)
-        out, loss = self.yolo_2(self.conv_2_f(x), targets, width)
+        out, loss = self.head_2(self.conv_2_f(x), targets, width)
         total_loss += loss
         results.append(out)
         # Finally, results
