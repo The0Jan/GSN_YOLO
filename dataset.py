@@ -1,7 +1,8 @@
 import os
 from torch.utils.data import Dataset
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
+from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.transforms import ToPILImage
+import PIL
 from PIL import Image
 import cv2
 import numpy as np
@@ -41,9 +42,14 @@ class YOLODataset(Dataset):
 
 
 class ResizeAndPadImage():
-    def __init__(self, img_size, resampling=Image.Resampling.LANCZOS):
+    def __init__(self, img_size, resampling=None):
         self.img_size = img_size
         self.resampling = resampling
+        if self.resampling is None:
+            if PIL.__version__ == '9.5.0':
+                self.resampling = Image.Resampling.LANCZOS
+            else:
+                self.resampling = Image.LANCZOS
 
     def __call__(self, img: Image.Image) -> Image.Image:
         GREY = (128, 128, 128)
