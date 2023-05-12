@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from typing import Tuple
 
 
 class Convolutional(nn.Module):
@@ -68,7 +69,7 @@ class Darknet53(nn.Module):
         self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
         # Fully connected layer omitted
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Starting point
         x = self.conv(x)
         # Residual blocks

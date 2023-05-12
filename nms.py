@@ -7,18 +7,17 @@ def transform_bbox(bboxes: torch.Tensor):
     Transform bounding boxes from (x, y, w, h) into (x1, y1, x2, y2).
     """
     new_bboxes = bboxes.new(bboxes.shape)
-    for i in range(2):
-        new_bboxes[..., i]   = bboxes[..., i] - bboxes[..., i+2] / 2
-        new_bboxes[..., i+2] = bboxes[..., i] + bboxes[..., i+2] / 2
+    new_bboxes[..., 2:4] = bboxes[..., 2:4] / 2
+    new_bboxes[..., 0:2] = bboxes[..., 0:2] - new_bboxes[..., 2:4]
+    new_bboxes[..., 2:4] = bboxes[..., 0:2] + new_bboxes[..., 2:4]
     return new_bboxes
 
 
-def confidence_threshold(predictions: torch.Tensor, objectness_confidence: float) -> torch.Tensor:
+def apply_confidence_threshold(predictions: torch.Tensor, objectness_confidence: float) -> torch.Tensor:
     """
     Filter out predictions that are below objectness confidence threshold.
     """
-    filtered = predictions[predictions[..., 4] > objectness_confidence]
-    return filtered.view(-1, predictions.size(1))
+    return predictions[predictions[..., 4] > objectness_confidence, :]
 
 
 def find_best_class(predictions: torch.Tensor) -> torch.Tensor:
@@ -26,10 +25,11 @@ def find_best_class(predictions: torch.Tensor) -> torch.Tensor:
     """
     # Get the most likely class for each bbox
     max_conf_val, max_conf_idx = torch.max(predictions[..., 5:], dim=1)
-    max_conf_idx = max_conf_idx.float().unsqueeze(1)
-    max_conf_val = max_conf_val.float().unsqueeze(1)
-    # Ditch all other classes in bbox, instead save class idx and class confidence
-    return torch.cat([predictions[..., :5], max_conf_idx, max_conf_val], dim=1)
+    max_conf_idx = max_conf_idx.unsqueeze(1)
+    # Final confidence = objectness * class confidence
+    predictions[..., 4] *= max_conf_val
+    # Ditch all classes in bbox, instead save best class idx
+    return torch.cat([predictions[..., :5], max_conf_idx], dim=1)
 
 
 def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
@@ -38,7 +38,7 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     """
     # Non maximum suppression is performed per class
     classes = torch.unique(x[..., 5])
-    results = x.new_empty(0, 7)
+    results = x.new_empty(0, x.size(1))
     for cls in classes:
         # Get predictions containing this class
         preds_of_class = x[x[..., 5] == cls]
@@ -52,19 +52,27 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     return results
 
 
-def after_party(predictions: torch.Tensor, confidence=0.5, iou=0.5):
+def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)):
     """
     id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
     """
-    # Transform bbox from (x, y, w, h, ...) into (x1, y1, x2, y2, ...)
-    predictions[..., :4] = transform_bbox(predictions[..., :4])
-    all_results = predictions.new_empty(0, 8)
+    all_results = predictions.new_empty(0, 7)
     # Process every image separately, NMS can't be vectorized
     for i, x in enumerate(predictions):
-        # Filter out low objectness confidence results
-        x = confidence_threshold(x, confidence)
+        # Filter out low objectness results
+        x = apply_confidence_threshold(x, confidence_threshold)
+        # Filter out invalid box width/height
+        x = x[((x[..., 2:4] > min_max_size[0]) & (x[..., 2:4] < min_max_size[1])).all(1)]
+        if x.size(0) == 0:
+            continue
+        # Transform bbox from (x, y, w, h, ...) into (x1, y1, x2, y2, ...)
+        x[..., :4] = transform_bbox(x[..., :4])
         # Choose and save the most probable class
         x = find_best_class(x)
+        # Filter out low final confidence results
+        x = apply_confidence_threshold(x, confidence_threshold)
+        if x.size(0) == 0:
+            continue
         # NMS
         result_preds = non_maximum_suppression(x, iou)
         # Add index in batch to all image predictions

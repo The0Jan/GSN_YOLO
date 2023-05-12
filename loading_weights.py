@@ -1,7 +1,6 @@
 import numpy as np
 import torch.nn as nn
 import torch
-import yolo as yolo
 from typing import List, Tuple
 
 
@@ -31,7 +30,7 @@ def load_model_parameters(weight_file_name: str, model: nn.Module):
                 conv = module_list[i]
                 # If there is a batch normalization layer next, load its parameters
                 # otherwise load bias of this convolutional layer
-                if (module_list[i+1]._get_name() == 'BatchNorm2d'):
+                if (i + 1 < len(module_list) and module_list[i+1]._get_name() == 'BatchNorm2d'):
                     bn = module_list[i+1]
                     attrs = [('bias', True), ('weight', True), ('running_mean', False), ('running_var', False)]
                     load_attrs(bn, weight_file, bn.bias.numel(), attrs)

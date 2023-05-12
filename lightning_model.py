@@ -25,7 +25,7 @@ class YOLOv3Module(pl.LightningModule):
 
     def forward(self, x: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         preds, _ = self.model(x, targets)
-        results = nms.after_party(preds)
+        results = nms.reduce_boxes(preds)
         return results
 
     def training_step(self, batch, batch_idx) -> float:
@@ -37,7 +37,7 @@ class YOLOv3Module(pl.LightningModule):
     def common_test_valid_step(self, batch, batch_idx) -> Tuple[float, float]:
         img_tensor, target, _, _ = batch
         pred, loss = self.model(img_tensor, target)
-        pred = nms.after_party(pred)
+        pred = nms.reduce_boxes(pred)
         mAP = self.calc_mAP(pred, target)
         return loss, mAP
 

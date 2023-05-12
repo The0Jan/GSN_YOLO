@@ -1,4 +1,4 @@
-import darknet
+from darknet import Convolutional, Darknet53
 import torch
 import torch.nn as nn
 from typing import List, Tuple
@@ -11,10 +11,10 @@ class ConvolutionalBlock(nn.Module):
     def __init__(self, in_channels: int, mid_channels: int, out_channels: int, repeat=5) -> None:
         super().__init__()
         self.block = nn.Sequential(
-            darknet.Convolutional(in_channels, out_channels, kernel_size=1),
+            Convolutional(in_channels, out_channels, kernel_size=1),
             *[
-                darknet.Convolutional(out_channels, mid_channels, kernel_size=3) if i % 2 == 0 else
-                darknet.Convolutional(mid_channels, out_channels, kernel_size=1)
+                Convolutional(out_channels, mid_channels, kernel_size=3) if i % 2 == 0 else
+                Convolutional(mid_channels, out_channels, kernel_size=1)
             for i in range(repeat - 1)]
         )
 
@@ -29,7 +29,7 @@ class FinalConvolutional(nn.Module):
     def __init__(self, in_channels: int, mid_channels: int, out_channels: int) -> None:
         super().__init__()
         self.block = nn.Sequential(
-            darknet.Convolutional(in_channels, mid_channels, kernel_size=3),
+            Convolutional(in_channels, mid_channels, kernel_size=3),
             nn.Conv2d(mid_channels, out_channels, kernel_size=1, padding=0, bias=True),
         )
 
@@ -44,7 +44,7 @@ class ConvolutionalUpsample(nn.Module):
     def __init__(self, in_channels: int, out_channels: int, scale_factor=2, mode='nearest') -> None:
         super().__init__()
         self.block = nn.Sequential(
-            darknet.Convolutional(in_channels, out_channels, kernel_size=1),
+            Convolutional(in_channels, out_channels, kernel_size=1),
             nn.Upsample(scale_factor=scale_factor, mode=mode),
         )
 
@@ -228,7 +228,7 @@ class YOLOv3(nn.Module):
         self.in_channels = in_channels
         self.predictions_total = bounding_boxes * (4 + 1 + self.num_classes)
         ### Backbone
-        self.backbone = darknet.Darknet53(in_channels)
+        self.backbone = Darknet53(in_channels)
         ### Features for 13x13 grid - for detecing large objects
         self.conv_block_0 = ConvolutionalBlock(in_channels=1024, mid_channels=1024, out_channels=512, repeat=5)
         self.conv_0_f = FinalConvolutional(in_channels=512, mid_channels=1024, out_channels=self.predictions_total)
