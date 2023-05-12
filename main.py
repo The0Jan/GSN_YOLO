@@ -92,9 +92,9 @@ def main(args):
         callbacks.append(early_stop_callback)
     # Init DataModule and Trainer
     if args.mode != 'predict':
-        data_model = MADAIDataModule(batch_size=args.batch_size, num_workers=4)
+        data_model = MADAIDataModule(batch_size=args.batch_size, num_workers=2)
     else:
-        data_model = PrimitiveDataModule(None, args.input, batch_size=args.batch_size, num_workers=4)
+        data_model = PrimitiveDataModule(None, args.input, batch_size=args.batch_size, num_workers=2)
         data_model.setup()
     trainer = pl.Trainer(accelerator='gpu', devices=1, max_epochs=30, callbacks=callbacks, logger=logger)
     # Begin work
