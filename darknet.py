@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from typing import Tuple
 
 
 class Convolutional(nn.Module):
@@ -12,7 +13,7 @@ class Convolutional(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, bias=False, kernel_size=kernel_size, padding=kernel_size//2, **kwargs),
-            nn.BatchNorm2d(out_channels, momentum=0.9),
+            nn.BatchNorm2d(out_channels, momentum=0.03),
             nn.LeakyReLU(0.1),
         )
 
@@ -58,9 +59,6 @@ class ResidualBlock(nn.Module):
 class Darknet53(nn.Module):
     def __init__(self, in_channels) -> None:
         super().__init__()
-        # Save results of intermediate blocks for YOLO heads
-        self.post_block_3: torch.Tensor
-        self.post_block_4: torch.Tensor
         # Starting point
         self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
         # Residual blocks
@@ -71,16 +69,17 @@ class Darknet53(nn.Module):
         self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
         # Fully connected layer omitted
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Starting point
         x = self.conv(x)
         # Residual blocks
         x = self.block_1(x)
         x = self.block_2(x)
         x = self.block_3(x)
-        self.post_block_3 = x
+        x52 = x
         x = self.block_4(x)
-        self.post_block_4 = x
+        x26 = x
         x = self.block_5(x)
+        x13 = x
         # Fully connected layer omitted
-        return x
+        return x52, x26, x13

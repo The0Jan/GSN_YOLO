@@ -72,7 +72,8 @@ def resize_bbs(org_size, new_size, bbs):
         bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
     # Normalize
     # Wyłączone do testów inv_resize
-    bbs = norm(bbs, new_size[0])
+    # naah, jednak chcemy od 0 do 416
+    #bbs = norm(bbs, new_size[0])
     return bbs
 
 
@@ -133,15 +134,16 @@ def draw_box(image, bbx, target_class):
         3: ("fighter", (103,193,173)),
         4: ("military helicopter", (176, 65, 64))
     }
-    label, color = classes[target_class]
+    #label, color = classes[int(target_class)]
+    label, color = int(target_class), (255, 0, 0)
     # Drawing box on image
     cv2.rectangle(image, corner_1, corner_2, color, 2)
     # Wiriting what class
     label = "{0}".format(label)
-    text_size = cv2.getTextSize(label, cv2.FONT_ITALIC, 1, 1)[0]
+    text_size = cv2.getTextSize(label, cv2.FONT_ITALIC, 0.4, 1)[0]
     corner_2 = corner_1[0] + text_size[0] + 4, corner_1[1] + text_size[1] + 4
     cv2.rectangle(image, corner_1, corner_2, color, -1)
-    cv2.putText(image, label, (corner_1[0], corner_1[1] + text_size[1] + 4), cv2.FONT_ITALIC, 1, [255,255,255], 1)
+    cv2.putText(image, label, (corner_1[0], corner_1[1] + text_size[1] + 4), cv2.FONT_ITALIC, 0.4, [255,255,255], 1)
     return image
 
 
