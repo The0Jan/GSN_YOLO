@@ -1,8 +1,7 @@
 from darknet import Convolutional, Darknet53
 import torch
 import torch.nn as nn
-from typing import List, Tuple
-import torchvision
+from typing import Tuple
 
 class ConvolutionalBlock(nn.Module):
     """
@@ -54,7 +53,7 @@ class ConvolutionalUpsample(nn.Module):
 
 
 class YOLOv3(nn.Module):
-    def __init__(self, num_classes: int, in_channels=3, bounding_boxes=3, obj_coeff=1, noobj_coeff=100, ignore_threshold=0.5) -> None:
+    def __init__(self, num_classes: int, in_channels=3, bounding_boxes=3) -> None:
         super().__init__()
         self.num_classes = num_classes
         self.in_channels = in_channels
@@ -73,9 +72,8 @@ class YOLOv3(nn.Module):
         self.conv_block_2 = ConvolutionalBlock(in_channels=256+128, mid_channels=256, out_channels=128, repeat=5)
         self.conv_2_f = FinalConvolutional(in_channels=128, mid_channels=256, out_channels=self.predictions_total)
 
-    def forward(self, x: torch.Tensor, targets: torch.Tensor) -> Tuple[torch.Tensor, float]:
+    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, float]:
         results = []
-        total_loss = 0
         ### Backbone
         x52, x26, x13 = self.backbone(x)
         ### 13x13
@@ -95,4 +93,4 @@ class YOLOv3(nn.Module):
         out = self.conv_2_f(x)
         results.append(out)
         # Finally, results
-        return tuple(results), total_loss
+        return tuple(results)

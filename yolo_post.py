@@ -23,6 +23,7 @@ class YOLOProcessor():
         self.anchors = torch.tensor([x / self.stride for anchor in anchors for x in anchor]).float().view(1, -1, 1, 1, 2)
 
     def reshape_and_sigmoid(self, x: torch.Tensor) -> torch.Tensor:
+        self.anchors = self.anchors.to(x.device)
         # Reshape output tensor
         # from (batches, all_outputs, grid_size, grid_size) into (batches, anchors, grid_size, grid_size, outputs)
         batches, _, grid_size, grid_size = x.shape
@@ -49,7 +50,6 @@ class YOLOProcessor():
              + loss_class
 
     def process_after_loss(self, x: torch.Tensor) -> torch.Tensor:
-        self.anchors = self.anchors.to(x.device)
         self.grid = self.grid.to(x.device)
         # Find final bounding boxes
         # tx, ty, tw, th = predicted tensor

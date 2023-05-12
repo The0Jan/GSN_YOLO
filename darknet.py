@@ -13,7 +13,7 @@ class Convolutional(nn.Module):
         super().__init__()
         self.layers = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, bias=False, kernel_size=kernel_size, padding=kernel_size//2, **kwargs),
-            nn.BatchNorm2d(out_channels, momentum=0.9),
+            nn.BatchNorm2d(out_channels, momentum=0.03),
             nn.LeakyReLU(0.1),
         )
 

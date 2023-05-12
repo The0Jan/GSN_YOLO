@@ -3,6 +3,15 @@ from lightning_data import MADAIDataModule
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+import dataset
+
+
+def predict(yolo_model, data_model):
+    for i, batch in enumerate(data_model.predict_dataloader()):
+        y = yolo_model.predict_step(batch, i)
+        print(y)
+        r = y['results']
+        dataset.visualize_results(y['img_path'][0], r[r[..., 0] == 0, :].tolist())
 
 
 def main():
