@@ -1,7 +1,8 @@
 import os
 from torch.utils.data import Dataset
-from torchvision.transforms import Resize, Compose, ToTensor, Normalize, Lambda
+from torchvision.transforms import Compose, ToTensor, Normalize
 from torchvision.transforms import ToPILImage
+import PIL
 from PIL import Image
 import cv2
 import numpy as np
@@ -40,41 +41,54 @@ class YOLODataset(Dataset):
         return image, bboxes, img_path, org_size,
 
 
-def resize_with_respect(img: Image.Image) -> Image.Image:
-    IMG_SIDE = 416
-    GREY = (128, 128, 128)
-    ratio = img.width / img.height
-    new_size = (IMG_SIDE, int(IMG_SIDE / ratio)) if ratio > 1 else (int(IMG_SIDE * ratio), IMG_SIDE)
-    img = img.resize(new_size, Image.Resampling.LANCZOS)
-    new = Image.new(img.mode, (IMG_SIDE, IMG_SIDE), GREY)
-    if ratio > 1:
-        new.paste(img, (0, (IMG_SIDE - img.height) // 2))
-    else:
-        new.paste(img, ((IMG_SIDE - img.width) // 2, 0))
-    return new
+class ResizeAndPadImage():
+    def __init__(self, img_size, resampling=None):
+        self.img_size = img_size
+        self.resampling = resampling
+        if self.resampling is None:
+            if PIL.__version__ == '9.5.0':
+                self.resampling = Image.Resampling.LANCZOS
+            else:
+                self.resampling = Image.LANCZOS
+
+    def __call__(self, img: Image.Image) -> Image.Image:
+        GREY = (128, 128, 128)
+        ratio = img.width / img.height
+        new_size = (self.img_size, int(self.img_size / ratio)) if ratio > 1 else (int(self.img_size * ratio), self.img_size)
+        img = img.resize(new_size, self.resampling)
+        new = Image.new(img.mode, (self.img_size, self.img_size), GREY)
+        if ratio > 1:
+            new.paste(img, (0, (self.img_size - img.height) // 2))
+        else:
+            new.paste(img, ((self.img_size - img.width) // 2, 0))
+        return new
 
 
-def resize_bbs(org_size, new_size, bbs):
-    ratio = org_size[0]/org_size[1]
-    # Get scale
-    if ratio > 1:
-        s_size = int(new_size[0]), int(new_size[1] / ratio)
-    else:
-        s_size = int(new_size[0] * ratio), int(new_size[1]) 
-    # Scale coordinates
-    bbs = scale_bbs(org_size, s_size, bbs)
-    # Move coordinates
-    if ratio > 1:
-        bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
-        bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
-    else:
-        bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
-        bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
-    # Normalize
-    # Wyłączone do testów inv_resize
-    # naah, jednak chcemy od 0 do 416
-    #bbs = norm(bbs, new_size[0])
-    return bbs
+class ResizeAndPadBoxes():
+    def __init__(self, img_size):
+        self.img_size = img_size
+
+    def __call__(self, org_size, new_size, bbs) -> list:
+        ratio = org_size[0]/org_size[1]
+        # Get scale
+        if ratio > 1:
+            s_size = int(new_size[0]), int(new_size[1] / ratio)
+        else:
+            s_size = int(new_size[0] * ratio), int(new_size[1]) 
+        # Scale coordinates
+        bbs = scale_bbs(org_size, s_size, bbs)
+        # Move coordinates
+        if ratio > 1:
+            bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
+            bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
+        else:
+            bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
+            bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
+        # Normalize
+        # Wyłączone do testów inv_resize
+        # naah, jednak chcemy od 0 do 416
+        #bbs = norm(bbs, new_size[0])
+        return bbs
 
 
 def norm(cords, img_side):
@@ -147,7 +161,7 @@ def draw_box(image, bbx, target_class):
     return image
 
 
-def visualize_results(img_path, targets):
+def visualize_results(img_path, out_dir, targets):
     image = Image.open(img_path).convert('RGB')
     cur_size = image.width, image.height
     image = np.array(image)
@@ -155,5 +169,6 @@ def visualize_results(img_path, targets):
         bbx = target[0:5]
         bbx = inv_resize_bbs((416,416), cur_size, bbx)
         image = draw_box(image, bbx[1:], target[6])
-    Image.fromarray(image).show()
+    out_path = os.path.join(out_dir, os.path.basename(img_path))
+    Image.fromarray(image).save(out_path)
     return image

@@ -3,4 +3,6 @@ train*
 __pycache__/
 weights/
 lightning_logs/
-model/
+*.ckpt
+*.zip
+*.jpg
