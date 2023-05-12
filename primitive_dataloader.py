@@ -35,8 +35,8 @@ class PrimitiveDataModule(pl.LightningDataModule):
     def val_dataloader(self) -> DataLoader:
         return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
-    def predict_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
+    def predict_dataloader(self, shuffle=False) -> DataLoader:
+        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=shuffle, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
     def _get_img_transform(self) -> Compose:
         return Compose([dataset.ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])

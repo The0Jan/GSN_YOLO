@@ -13,10 +13,12 @@ import gdown
 
 def predict(model, datamodule, output, batch_count):
     os.makedirs(output, exist_ok=True)
-    for batch_i, batch in enumerate(datamodule.predict_dataloader()):
-        if batch_i == batch_count:
+    batches = 0
+    for batch_i, batch in enumerate(datamodule.predict_dataloader(shuffle=True)):
+        if batches == batch_count:
             break
         y = model.predict_step(batch, batch_i)
+        batches += 1
         for i in range(len(y['img_path'])):
             r = y['results']
             dataset.visualize_results(y['img_path'][i], output, r[r[..., 0] == i, :].tolist())
