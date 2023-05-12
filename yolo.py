@@ -81,7 +81,7 @@ class YOLODetector(nn.Module):
           [[1,0], [1,1]]]] etc.
         """
         x, y = torch.meshgrid([torch.arange(width), torch.arange(height)], indexing='ij')
-        return torch.stack((x, y), dim=2).view(1, 1, width, height, 2).float().to(device)
+        return torch.stack((x, y), dim=2).view(1, 1, width, height, 2).float().to(device)[..., [1, 0]]
 
     def forward(self, x: torch.Tensor, targets: torch.Tensor, img_size: int) -> Tuple[torch.Tensor, float]:
         # Stride is pixels per cell
