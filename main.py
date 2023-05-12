@@ -11,21 +11,27 @@ import os
 import gdown
 
 
-def predict(model, datamodule):
-    for i, batch in enumerate(datamodule.predict_dataloader()):
-        y = model.predict_step(batch, i)
-        r = y['results']
-        idx = 0
-        dataset.visualize_results(y['img_path'][idx], r[r[..., 0] == idx, :].tolist())
-        break
+def predict(model, datamodule, output, batch_count):
+    os.makedirs(output, exist_ok=True)
+    for batch_i, batch in enumerate(datamodule.predict_dataloader()):
+        if batch_i == batch_count:
+            break
+        y = model.predict_step(batch, batch_i)
+        for i in range(len(y['img_path'])):
+            r = y['results']
+            dataset.visualize_results(y['img_path'][i], output, r[r[..., 0] == i, :].tolist())
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='YoloV3')
     parser.add_argument('mode', type=str, choices=['train', 'test', 'predict'], help='Mode of action')
-    parser.add_argument('-l', '--logger', type=str, choices=['csv', 'tensorboard', 'wandb'], default='csv', help='Logger to use')
+    parser.add_argument('-b','--batch_count', type=int, default=1, help='Number of batches to work on')
     parser.add_argument('-c','--checkpoint', type=str, default=None, help='Load model checkpoint from file')
     parser.add_argument('-e','--earlystop', type=bool, default=True, help='Should use early stop callback?')
+    parser.add_argument('-i','--input', type=str, default='inputs', help='Prediction inputs directory')
+    parser.add_argument('-l', '--logger', type=str, choices=['csv', 'tensorboard', 'wandb'], default='csv', help='Logger to use')
+    parser.add_argument('-o','--output', type=str, default='predictions', help='Prediction outputs directory')
+    parser.add_argument('-s','--batch_size', type=int, default=8, help='Number of images in batch')
     return parser.parse_args()
 
 
@@ -86,9 +92,9 @@ def main(args):
         callbacks.append(early_stop_callback)
     # Init DataModule and Trainer
     if args.mode != 'predict':
-        data_model = MADAIDataModule(batch_size=8, num_workers=0) # NOTE: num_workers _must_ be 0 for now, else it causes an instant error
+        data_model = MADAIDataModule(batch_size=args.batch_size, num_workers=4)
     else:
-        data_model = PrimitiveDataModule(None, 'test-new/images', batch_size=8, num_workers=0)
+        data_model = PrimitiveDataModule(None, args.input, batch_size=args.batch_size, num_workers=4)
         data_model.setup()
     trainer = pl.Trainer(accelerator='gpu', devices=1, max_epochs=30, callbacks=callbacks, logger=logger)
     # Begin work
@@ -97,7 +103,7 @@ def main(args):
     elif args.mode == 'test':
         trainer.test(model=yolo_model, datamodule=data_model)
     elif args.mode == 'predict':
-        predict(model=yolo_model, datamodule=data_model)
+        predict(model=yolo_model, datamodule=data_model, output=args.output, batch_count=args.batch_count)
 
 
 if __name__ == "__main__":

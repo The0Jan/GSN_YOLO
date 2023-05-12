@@ -68,10 +68,10 @@ class MADAIDataModule(pl.LightningDataModule):
         return DataLoader(self.dataset_val, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
     def get_img_transform(self):
-        return Compose([Lambda(dataset.resize_with_respect), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        return Compose([dataset.ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def get_target_transform(self):
-        return dataset.resize_bbs
+        return dataset.ResizeAndPadBoxes(416)
 
     def _collate_fn(self, batch):
         image_batch = torch.stack([elem[0] for elem in batch], 0)
