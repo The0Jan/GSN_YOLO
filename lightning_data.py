@@ -22,18 +22,23 @@ class MADAIDataModule(pl.LightningDataModule):
         super().__init__()
         self.batch_size     = batch_size
         self.image_size     = image_size
+
+        # Directories for test and train data
         self.train_anno_dir = train_anno_dir
         self.train_img_dir  = train_img_dir
         self.test_anno_dir  = test_anno_dir
         self.test_img_dir   = test_img_dir
+        
         self.num_workers    = num_workers
-
         self.data_gid = "1sDqxwOeROzsfvW2d_K7O_akEyLhDcKa3"
         self.data_file = "data.zip"
 
+        # Init default transforms for images if none were given
         self.img_transform  = img_transform
         if img_transform is None:
             self.img_transform = self.get_img_transform()
+        
+        # Init default transforms for targets if none were given
         self.target_transform   = target_transform
         if target_transform is None:
             self.target_transform = self.get_target_transform() 
@@ -79,6 +84,9 @@ class MADAIDataModule(pl.LightningDataModule):
         return dataset.ResizeAndPadBoxes(416)
 
     def _collate_fn(self, batch):
+        """
+        Customized collate function for additional annotation processing, where the batch index is being added to an annotation.
+        """
         image_batch = torch.stack([elem[0] for elem in batch], 0)
         img_path_batch = [elem[2] for elem in batch]
         org_size_batch = [elem[3] for elem in batch]
@@ -94,6 +102,10 @@ class MADAIDataModule(pl.LightningDataModule):
 
 
 def assign_batch_index_to_bbx(target, batch_index):
+    """
+    Former function used in the collate function. At this point deprecated.
+    TODO: Remove it.
+    """
     for i, bbx in enumerate(target):
         target[i] = [batch_index, *bbx]
     return target

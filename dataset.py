@@ -23,7 +23,8 @@ class YOLODataset(Dataset):
         self.image_size = image_size
         self.transform = transform if transform is not None else Compose([ToTensor()])
         self.target_transform = target_transform
-        #
+        
+        # Get list of images and list of annotations files in given directories
         self.image_list = os.listdir(image_dir)
         self.annotations_list = os.listdir(annotations_dir)
 
@@ -34,20 +35,29 @@ class YOLODataset(Dataset):
         img_path = os.path.join(self.img_dir, self.image_list[idx])
         anno_path = os.path.join(self.annotations_dir, self.annotations_list[idx])
         bboxes = []
+        
+        # Fetch image
         image = Image.open(img_path).convert('RGB')
         org_size = image.size
+        # Perform transformation on image
         if self.transform is not None:
             image = self.transform(image)
+            
+        # Fetch data about bounding boxes from annotations file
         with open(anno_path, 'r') as anno_obj:
             for line in anno_obj.readlines():
                 elements = [int(e) for e in line.split(",")]
                 bboxes.append(elements)
+        # Apply transformation to every bounding box for a single image       
         if self.target_transform is not None:
             bboxes = [self.target_transform(org_size, self.image_size, b) for b in bboxes]
         return image, bboxes, img_path, org_size,
 
 
 class ResizeAndPadImage():
+    """
+    Responsible for resizing, centering and padding the original images to fit the given img_size.
+    """
     def __init__(self, img_size, resampling=None):
         self.img_size = img_size
         self.resampling = resampling
@@ -60,8 +70,11 @@ class ResizeAndPadImage():
     def __call__(self, img: Image.Image) -> Image.Image:
         GREY = (128, 128, 128)
         ratio = img.width / img.height
+        # Get the correct new size for the image
         new_size = (self.img_size, int(self.img_size / ratio)) if ratio > 1 else (int(self.img_size * ratio), self.img_size)
+        # Resize the image 
         img = img.resize(new_size, self.resampling)
+        # Center the image and pad the rest
         new = Image.new(img.mode, (self.img_size, self.img_size), GREY)
         if ratio > 1:
             new.paste(img, (0, (self.img_size - img.height) // 2))
@@ -71,43 +84,48 @@ class ResizeAndPadImage():
 
 
 class ResizeAndPadBoxes():
+    """
+    Responsible for resizing and moving the bounding boxes for them to fit the outcome image from ResizeAndPadImage.
+    """
     def __init__(self, img_size):
         self.img_size = img_size
 
     def __call__(self, org_size, new_size, bbs) -> list:
         ratio = org_size[0]/org_size[1]
-        # Get scale
+        # Get scaled size of the image (we use this for resizing )
         if ratio > 1:
             s_size = int(new_size[0]), int(new_size[1] / ratio)
         else:
             s_size = int(new_size[0] * ratio), int(new_size[1]) 
         # Scale coordinates
         bbs = scale_bbs(org_size, s_size, bbs)
-        # Move coordinates
+        # Move coordinates (This is done, due to us moving the image with ResizeAndPadImage to the center)
         if ratio > 1:
             bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
             bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
         else:
             bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
             bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
-        # Normalize
-        # Wyłączone do testów inv_resize
-        # naah, jednak chcemy od 0 do 416
+        # Normalize (Actually is currently not used)
         #bbs = norm(bbs, new_size[0])
         return bbs
 
-
 def norm(cords, img_side):
+    """
+    Early function used for normalizing the coordinate values for input.
+    """
     for i in range(1, len(cords)):
         cords[i] = cords[i] / img_side
     return cords
-
 
 def add_cord(corn, new_s, s_size):
     return int(corn +  (new_s - s_size) / 2)
 
 
 def scale_bbs(org_size, new_size, bbs):
+    """
+    Scale the bounding boxes to the new image size.
+    """
     Rx = new_size[0] / org_size[0]
     Ry = new_size[1] / org_size[1]
     bbs[1] = round(bbs[1] * Rx)
@@ -118,33 +136,41 @@ def scale_bbs(org_size, new_size, bbs):
 
 
 def tensor_to_image(tensor_image): 
+    """
+    Early function used for changing back the given transformed tensor to an image.
+    """
     inv_imagenet_normalize = Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225], std=[1./0.229, 1./0.224, 1./0.225])
     to_pil_image = Compose([inv_imagenet_normalize, ToPILImage()])
     image = to_pil_image(tensor_image)
     return image
 
-
 def inv_resize_bbs(org_size, new_size, bbs):
+    """
+    Function responsible for undoing the scaling and appropriate moving of coordinates done by 'ResizeAndPadBoxes'.
+    Prepares the bounding boxes to be used on the original image.
+    """
     ratio = new_size[0]/new_size[1]
-    # Get Scale
+    # Get what the scaled sized of the image was
     s_size = org_size[0], int(org_size[1] / ratio) if ratio > 1 else int(org_size[0] * ratio), org_size[1]
-    # Move coordinates
+    # Move coordinates back
     if ratio > 1:
         bbs[2] = sub_cord(bbs[2], org_size[1], s_size[1])
         bbs[4] = sub_cord(bbs[4], org_size[1], s_size[1])
     else:
         bbs[1] = sub_cord(bbs[1], org_size[0], s_size[0])
         bbs[3] = sub_cord(bbs[3], org_size[0], s_size[0])
-    #Scale coordinates
+    # Scale coordinates back
     bbs = scale_bbs(s_size, new_size, bbs)  
     return bbs
-
 
 def sub_cord(corn, new_s, s_size):
     return int(corn -  (new_s- s_size)/2)
 
-
 def draw_box(image, bbx, target_class):
+    """
+    Draw a single bounding box with class onto a given image.
+    Help and inspiration drawn from https://stackoverflow.com/questions/56108183/python-opencv-cv2-drawing-rectangle-with-text
+    """
     corner_1 = tuple(bbx[0:2])
     corner_2 = tuple(bbx[2:4])
     classes = {
@@ -158,7 +184,7 @@ def draw_box(image, bbx, target_class):
     label, color = int(target_class), (255, 0, 0)
     # Drawing box on image
     cv2.rectangle(image, corner_1, corner_2, color, 2)
-    # Wiriting what class
+    # Adding what class onto bouding box
     label = "{0}".format(label)
     text_size = cv2.getTextSize(label, cv2.FONT_ITALIC, 0.4, 1)[0]
     corner_2 = corner_1[0] + text_size[0] + 4, corner_1[1] + text_size[1] + 4
@@ -168,6 +194,9 @@ def draw_box(image, bbx, target_class):
 
 
 def visualize_results(img_path, out_dir, targets):
+    """
+    Draw all bounding boxes with corresponding class onto a single image and saving the results.
+    """
     image = Image.open(img_path).convert('RGB')
     cur_size = image.width, image.height
     image = np.array(image)
