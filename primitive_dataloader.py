@@ -1,3 +1,8 @@
+"""
+Nazwa: primitive_dataloader.py
+Opis: DataModule zwracający tylko zdjęcia z pojedynczego folderu (bez adnotacji).
+Autor: Bartłomiej Moroz
+"""
 import torch
 import pytorch_lightning as pl
 from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
@@ -8,6 +13,11 @@ from primitive_dataset import PrimitiveDataset
 
 
 class PrimitiveDataModule(pl.LightningDataModule):
+    """
+    A DataModule that provides input images info in the same format as MADAIDataModule,
+    but with no annotations. Primary use case is for manual testing and predictions.
+    There is no distinction between training, validation, testing and prediction data.
+    """
     Batch = Tuple[List[torch.Tensor], List[None], List[str], List[Tuple[int, int]]]
 
     def __init__(self, anno_dir: str, img_dir: str,

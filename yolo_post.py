@@ -1,9 +1,18 @@
+"""
+Nazwa: yolo_post.py
+Opis: Przetwarzanie surowego wyjścia z YOLO: funkcja straty,
+      dopasowywanie anchorów.
+Autor: Bartłomiej Moroz
+"""
 import torch
 import torch.nn as nn
 import torchvision
 from typing import List, Tuple
 
 class YOLOProcessor():
+    """
+    Helper class that processes model outputs for one prediction head.
+    """
     def __init__(self, anchors: List[Tuple[int, int]], stride: int, img_size: int, num_classes: int, obj_coff=1, noobj_coff=100, ignore_threshold=0.5) -> None:
         super().__init__()
         self.num_outputs = num_classes + 4 + 1
@@ -12,17 +21,21 @@ class YOLOProcessor():
         self.bce_loss = nn.BCELoss()
         self.stride = stride
         self.img_size = img_size
+        # These three are used in loss()
         self.ignore_threshold = ignore_threshold
         self.obj_coff = obj_coff
         self.noobj_coff = noobj_coff
         # Create a 2D grid of cells
         self.grid = self._make_grid(self.img_size // self.stride)
-        # Turn array of (width, height) anchor sizes into a tensor
+        # Turn array of (width, height) anchor sizes (in pixels) into a tensor with (width, height) in cells.
         # Achieve that by flattening anchor sizes into a 1D list, turning into a tensor,
         # then reshaping into (batches, anchors, grid_size, grid_size, values)
         self.anchors = torch.tensor([x / self.stride for anchor in anchors for x in anchor]).float().view(1, -1, 1, 1, 2)
 
     def reshape_and_sigmoid(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Reshape output tensor and apply sigmoid function on x, y coordinates, objectness and classes.
+        """
         self.anchors = self.anchors.to(x.device)
         # Reshape output tensor
         # from (batches, all_outputs, grid_size, grid_size) into (batches, anchors, grid_size, grid_size, outputs)
@@ -34,6 +47,11 @@ class YOLOProcessor():
         return x
 
     def loss(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
+        """
+        Calculate loss for given batch and targets. Input targets are in (class, x1, y1, x2, y2)
+        format, where coordinates are in [0, 416) range.
+        """
+        # Transform ground truths from "human" format to one matching raw predictions output.
         truths, obj_mask, noobj_mask, class_mask, ious = self._transform_truths(predictions, targets, self.anchors.view(-1, 2), self.ignore_threshold)
         # Bounding box loss
         loss_x = self.mse_loss(predictions[..., 0][obj_mask], truths[..., 0][obj_mask])
@@ -50,15 +68,17 @@ class YOLOProcessor():
              + loss_class
 
     def process_after_loss(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Find final bounding boxes by adjusting anchors by model output and flatten output
+        into (batch_size, -1, outputs).
+        """
         self.grid = self.grid.to(x.device)
-        # Find final bounding boxes
         # tx, ty, tw, th = predicted tensor
         # cx, cy = grid offset from top-left (in cells)
-        # aw, ah = constant anchor sizes (in pixels)
-        # (x, y) = sigmoid((tx, ty)) + (cx, cy)
+        # aw, ah = constant anchor sizes (in cells)
+        # (x, y) = (tx, ty) + (cx, cy)
         # (w, h) = exp((tw, th)) * (aw, ah)
-        # conf   = sigmoid(conf)
-        # cls    = sigmoid(cls)
+        # Clone and detch, because we don't want this in our gradient propagation.
         predictions = x.clone().detach()
         predictions[..., 0:2] = x[..., 0:2] + self.grid               # anchor x, y (in cells)
         predictions[..., 2:4] = torch.exp(x[..., 2:4]) * self.anchors # anchor width, height (in cells)
@@ -71,6 +91,12 @@ class YOLOProcessor():
 
     def _transform_truths(self, predictions: torch.Tensor, targets: torch.Tensor,
                           anchors: torch.Tensor, ignore_threshold: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Transform ground truths from "human readable" format of (class, x1, y1, x2, y2) to format
+        that matches raw model predictions, such that loss can be calculated easily.
+        Based on: https://github.com/v-iashin/WebsiteYOLO/blob/master/darknet.py#L237 (REALLY nice comments)
+        TODO: Remove class_mask and iou, since we calculate metrics in a different way.
+        """
         # Tensor of same shape as predictions (batches, anchors, grid, grid, outputs) but with different outputs.
         # Outputs are (x, y, w, h, conf, classes) like predictions, but only filled for elements that best match ground truth.
         # x, y are between 0 and 1

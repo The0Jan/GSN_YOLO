@@ -1,3 +1,8 @@
+"""
+Nazwa: lightning_model.py
+Opis: Główny LightningModule modelu.
+Autor: Jan Walczak, Bartłomiej Moroz
+"""
 from typing import Dict, List, Tuple
 import pytorch_lightning as pl
 import torch
@@ -40,6 +45,12 @@ class YOLOv3Module(pl.LightningModule):
         return self.model(x)
 
     def _common_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[torch.Tensor, float]:
+        """
+        Run model forward pass and, depending on supplied mode, execute some post-processing functions.
+        `train`:          forward, reshape_and_sigmoid, loss, process_after_loss, _
+        `test` and `val`: forward, reshape_and_sigmoid, loss, process_after_loss, reduce_boxes
+        `predict`:        forward, reshape_and_sigmoid, _,    process_after_loss, reduce_boxes
+        """
         img_tensor, targets, _, _, = batch
         loss = 0
         outputs = list(self(img_tensor))
@@ -58,6 +69,10 @@ class YOLOv3Module(pl.LightningModule):
         return results, loss
 
     def _common_test_valid_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[float, dict]:
+        """
+        Run _common_step and calculate mAP
+        TODO: Move mAP to _common_step and activate only for train and val?
+        """
         _, targets, _, _, = batch
         results, loss = self._common_step(batch, batch_idx, mode)
         mAP_dict = self._calc_mAP(results, targets)
@@ -92,6 +107,9 @@ class YOLOv3Module(pl.LightningModule):
         return optimizer
 
     def _calc_mAP(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
+        """
+        Calculate mAP for predictions. Returns a dictionary with various mAPs and mARs (unused).
+        """
         map = MeanAveragePrecision()
         preds = []
         tgts = []
@@ -105,7 +123,9 @@ class YOLOv3Module(pl.LightningModule):
         return map_dict
 
     def _group_by_batch_idx(self, tensor: torch.Tensor, indices: torch.Tensor) -> List[torch.Tensor]:
-        # Very loosely based on https://github.com/pytorch/pytorch/issues/20613
+        """
+        Very loosely based on https://github.com/pytorch/pytorch/issues/20613
+        """
         _, order = indices.sort(0)
         delta = indices[1:] - indices[:-1]
         cutpoints = (delta.nonzero() + 1).tolist()

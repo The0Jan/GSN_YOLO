@@ -1,3 +1,9 @@
+"""
+Nazwa: dataset.py
+Opis: Główny dataset projektu. Zawiera także funkcje do wizualizacji wyników
+      (TODO: przenieść wizualizację do innego pliku)
+Autor: Jan Walczak
+"""
 import os
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor, Normalize

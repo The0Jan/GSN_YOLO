@@ -1,3 +1,10 @@
+"""
+Nazwa: preprocess_once.py
+Opis: Skrypt do jednorazowego przetwarzania wstępnego zbioru danych
+      na format, który nam bardziej odpowiada. Adnotacje z XML do CSV,
+      zmiana struktury folderów.
+Autor: Bartłomiej Moroz, Jan Walczak
+"""
 import os
 from xml.etree.ElementTree import parse as xml_parse
 from shutil import make_archive, unpack_archive
@@ -21,6 +28,9 @@ classLUT = {
 
 
 def process_xml(filename: str) -> List[List[str]]:
+    """
+    Extract meaningful data (bounding boxes) from XML file to array.
+    """
     root = xml_parse(filename).getroot()
     boxes = []
     for child in root.findall('object'):
@@ -30,6 +40,9 @@ def process_xml(filename: str) -> List[List[str]]:
     return boxes
 
 def process_xml_depracated(filename: str) -> List[List[str]]:
+    """
+    DEPRECATED.
+    """
     root = xml_parse(filename).getroot()
     size = root.find('size')
     boxes = [[size.find('width').text, size.find('height').text]]
@@ -40,6 +53,9 @@ def process_xml_depracated(filename: str) -> List[List[str]]:
     return boxes
 
 def process_annotations(filename: str, outdir: str) -> None:
+    """
+    Dump annotation array to CSV file.
+    """
     boxes = process_xml(filename)
     name = os.path.basename(filename)
     name, _ = os.path.splitext(name)
@@ -48,11 +64,18 @@ def process_annotations(filename: str, outdir: str) -> None:
 
 
 def process_images(filename: str, outdir: str) -> None:
+    """
+    Do nothing with images.
+    TODO: Why does this exist? Remove it.
+    """
     name = os.path.basename(filename)
     img = Image.open(filename)
     img.save(os.path.join(outdir, name))
 
 def process_images_depracted(filename: str, outdir: str) -> None:
+    """
+    DEPRECATED.
+    """
     IMG_SIDE = 416
     BLACK = (0, 0, 0)
     name = os.path.basename(filename)

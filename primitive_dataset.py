@@ -1,3 +1,8 @@
+"""
+Nazwa: primitive_dataset.py
+Opis: Dataset zwracający tylko zdjęcia z folderu (bez adnotacji).
+Autor: Bartłomiej Moroz
+"""
 import os
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
@@ -7,6 +12,10 @@ import torch
 
 
 class PrimitiveDataset(Dataset):
+    """
+    A dataset that provides input images info in the same format as YOLODataset,
+    but with no annotations. Primary use case is for manual testing and predictions.
+    """
     Item = Tuple[torch.Tensor, list, str, Tuple[int, int]]
 
     def __init__(self, image_dir: str, transform=None) -> None:

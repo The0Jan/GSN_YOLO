@@ -1,3 +1,8 @@
+"""
+Nazwa: yolo.py
+Opis: Model YOLOv3.
+Autor: Bartłomiej Moroz
+"""
 from darknet import Convolutional, Darknet53
 import torch
 import torch.nn as nn
@@ -24,6 +29,7 @@ class ConvolutionalBlock(nn.Module):
 
 class FinalConvolutional(nn.Module):
     """
+    Final prediction head. Turns image features into model outputs.
     """
     def __init__(self, in_channels: int, mid_channels: int, out_channels: int) -> None:
         super().__init__()
@@ -39,6 +45,7 @@ class FinalConvolutional(nn.Module):
 
 class ConvolutionalUpsample(nn.Module):
     """
+    Upsampling layer.
     """
     def __init__(self, in_channels: int, out_channels: int, scale_factor=2, mode='nearest') -> None:
         super().__init__()
@@ -53,6 +60,9 @@ class ConvolutionalUpsample(nn.Module):
 
 
 class YOLOv3(nn.Module):
+    """
+    Complete YOLOv3 module. See yolo.drawio diagram for details.
+    """
     def __init__(self, num_classes: int, in_channels=3, bounding_boxes=3) -> None:
         super().__init__()
         self.num_classes = num_classes

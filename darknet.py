@@ -1,3 +1,8 @@
+"""
+Nazwa: darknet.py
+Opis: Model Darknet53.
+Autor: Jan Walczak (alpha), Bartłomiej Moroz (final)
+"""
 import torch
 import torch.nn as nn
 from typing import Tuple
@@ -57,6 +62,9 @@ class ResidualBlock(nn.Module):
 
 
 class Darknet53(nn.Module):
+    """
+    Complete Darknet53 module. See darknet.drawio diagram for details.
+    """
     def __init__(self, in_channels) -> None:
         super().__init__()
         # Starting point

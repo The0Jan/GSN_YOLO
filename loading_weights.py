@@ -1,3 +1,8 @@
+"""
+Nazwa: loading_weights.py
+Opis: Ładowanie wag z pliku do modelu.
+Autor: Jan Walczak (alpha), Bartłomiej Moroz (final)
+"""
 import numpy as np
 import torch.nn as nn
 import torch
@@ -5,6 +10,9 @@ from typing import List, Tuple
 
 
 def load_params(input_file, params: list):
+    """
+    Lazily load data from input file into provided params.
+    """
     t = 0
     for param in params:
         #Cast the loaded parameters into dims of model weights & copy the data to model.
@@ -14,10 +22,14 @@ def load_params(input_file, params: list):
 
 
 def load_model_parameters(weight_file_name: str, model: nn.Module):
+    """
+    Load all parameters of input model from a weights file _specifically_ in P.J. Redmon's binary format.
+    """
     with torch.no_grad():
         with open(weight_file_name, 'rb') as weight_file:
             # Read header
             header = np.fromfile(weight_file, dtype=np.int32, count=5)
+            # TODO: Remove this line, we don't really care about this.
             _, _, _, seen, _ = torch.from_numpy(header)
             module_list = [module for module in model.modules()]
             # Load parameters into each layer

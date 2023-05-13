@@ -1,3 +1,10 @@
+"""
+Nazwa: nms.py
+Opis: Końcowe przetwarzanie wyjść z modelu. Filtracja po pewności,
+      transformacja koordynatów ramek, NMS.
+Autor: Bartłomiej Moroz
+"""
+
 import torch
 import torchvision
 
@@ -22,6 +29,10 @@ def apply_confidence_threshold(predictions: torch.Tensor, objectness_confidence:
 
 def find_best_class(predictions: torch.Tensor) -> torch.Tensor:
     """
+    Find the best class for each prediction (highest class confidence),
+    multiply objectness by class confidence and save best class index
+    (instead of confidences of all classes).
+    (x1, y1, x2, y2, objectness, classes...) -> (x1, y1, x2, y2, final_confidence, class)
     """
     # Get the most likely class for each bbox
     max_conf_val, max_conf_idx = torch.max(predictions[..., 5:], dim=1)
@@ -34,7 +45,7 @@ def find_best_class(predictions: torch.Tensor) -> torch.Tensor:
 
 def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     """
-    Perform Non Maximum Suppression for all predictions (all classes) in an image
+    Perform Non Maximum Suppression for all predictions (all classes) in an image.
     """
     # Non maximum suppression is performed per class
     classes = torch.unique(x[..., 5])
@@ -54,7 +65,16 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
 
 def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)):
     """
-    id_in_batch, x1, y1, x2, y2, objectness, class, class_confidence
+    Given a batch of predictions, perform some transformations and reduce them to only the meaningful ones:
+      - filter out low objectness
+      - filter out too small or too big boxes
+      - transform (x, y, w, h) boxes into (x1, y1, x2, y2)
+      - find best class for each prediction
+      - filter out low objectness * class_confidence
+      - perform NMS
+      - prepend each prediction with image index in batch
+    Additionally, the batch is flattened from (batch_size, all_predictions, model_output_predictions) into (-1, final_prediction_shape).
+    Final prediction shape: (id_in_batch, x1, y1, x2, y2, final_confidence, class)
     """
     all_results = predictions.new_empty(0, 7)
     # Process every image separately, NMS can't be vectorized

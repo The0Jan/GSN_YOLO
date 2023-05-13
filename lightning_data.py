@@ -1,3 +1,8 @@
+"""
+Nazwa: lightning_data.py
+Opis: Główny DataModule używany do trenowania i testowania.
+Autor: Jan Walczak
+"""
 import torch
 import dataset
 import gdown

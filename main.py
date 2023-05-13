@@ -1,3 +1,9 @@
+"""
+Nazwa: dataset.py
+Opis: Punkt wejścia do programu. Obsługa argumentów wejściowych,
+      pobieranie potrzebnych plików, uruchamianie modelu.
+Autor: Bartłomiej Moroz, Jan Walczak
+"""
 from lightning_model import YOLOv3Module 
 from lightning_data import MADAIDataModule
 from primitive_dataloader import PrimitiveDataModule
@@ -14,13 +20,16 @@ CHECKPOINT_GID_BEST = "16x4pcp_mWr-MSv0TcliAGyfk843EjXWp"
 CHECKPOINT_GID_SECOND = "1IlvbUfkeNNjITpWeG3IsJPJSrg2nPEhf"
 
 def predict(model, datamodule, output, batch_count):
+    # Prepare output directory
     os.makedirs(output, exist_ok=True)
     batches = 0
+    # Predict in batches in a simple way
     for batch_i, batch in enumerate(datamodule.predict_dataloader(shuffle=True)):
         if batches == batch_count:
             break
         y = model.predict_step(batch, batch_i)
         batches += 1
+        # Visualize results and save to files
         for i in range(len(y['img_path'])):
             r = y['results']
             dataset.visualize_results(y['img_path'][i], output, r[r[..., 0] == i, :].tolist())
@@ -49,7 +58,7 @@ def download(weights_dir: str, model_dir: str, model_gid: str):
     weights_file = os.path.join(weights_dir, weights_file)
     if not os.path.isfile(weights_file):
         gdown.download(id=weights_gid, output=weights_file)
-    # Download best model checkpoint
+    # Download model checkpoint
     if model_gid is not None:
         model_dir = "model"
         model_file = model_gid + ".ckpt"
