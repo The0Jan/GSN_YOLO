@@ -6,10 +6,10 @@ Opis: Skrypt do jednorazowego przetwarzania wstępnego zbioru danych
 Autor: Bartłomiej Moroz, Jan Walczak
 """
 import os
-from xml.etree.ElementTree import parse as xml_parse
-from shutil import make_archive, unpack_archive
+from shutil import make_archive, unpack_archive, copyfile
 from typing import List
-from PIL import Image
+from xml.etree.ElementTree import parse as xml_parse, Element
+
 
 classLUT = {
     'aircraft': '0',
@@ -29,28 +29,22 @@ classLUT = {
 
 def process_xml(filename: str) -> List[List[str]]:
     """
-    Extract meaningful data (bounding boxes) from XML file to array.
+    Extract meaningful data (bounding boxes and class) from XML file to array.
     """
     root = xml_parse(filename).getroot()
     boxes = []
     for child in root.findall('object'):
         name = child.find('name')
+        if not isinstance(name, Element) or name.text is None:
+            raise RuntimeError(f'XML File {filename} is missing <name> or its content!')
         bndbox = child.find('bndbox')
-        boxes.append([classLUT[name.text], bndbox.find('xmin').text, bndbox.find('ymin').text, bndbox.find('xmax').text, bndbox.find('ymax').text])
-    return boxes
-
-
-def process_xml_depracated(filename: str) -> List[List[str]]:
-    """
-    DEPRECATED.
-    """
-    root = xml_parse(filename).getroot()
-    size = root.find('size')
-    boxes = [[size.find('width').text, size.find('height').text]]
-    for child in root.findall('object'):
-        name = child.find('name')
-        bndbox = child.find('bndbox')
-        boxes.append([classLUT[name.text], bndbox.find('xmin').text, bndbox.find('ymin').text, bndbox.find('xmax').text, bndbox.find('ymax').text])
+        if not isinstance(bndbox, Element):
+            raise RuntimeError(f'XML File {filename} is missing <bndbox>!')
+        xmin, xmax = bndbox.find('xmin'), bndbox.find('xmax')
+        ymin, ymax = bndbox.find('ymin'), bndbox.find('ymax')
+        if any([not isinstance(x, Element) or x.text is None for x in (xmin, xmax, ymin, ymax)]):
+            raise RuntimeError(f'XML File {filename} is missing <bndbox>!')
+        boxes.append([classLUT[name.text], xmin.text, ymin.text, xmax.text, ymax.text]) # type: ignore
     return boxes
 
 
@@ -67,31 +61,9 @@ def process_annotations(filename: str, outdir: str) -> None:
 
 def process_images(filename: str, outdir: str) -> None:
     """
-    Do nothing with images.
-    TODO: Why does this exist? Remove it.
+    Just copy images to output directory.
     """
-    name = os.path.basename(filename)
-    img = Image.open(filename)
-    img.save(os.path.join(outdir, name))
-
-
-def process_images_depracted(filename: str, outdir: str) -> None:
-    """
-    DEPRECATED.
-    """
-    IMG_SIDE = 416
-    BLACK = (0, 0, 0)
-    name = os.path.basename(filename)
-    img = Image.open(filename)
-    ratio = img.width / img.height
-    if ratio > 1:
-        new_size = int(IMG_SIDE), int(IMG_SIDE / ratio)
-    else:
-        new_size = int(IMG_SIDE * ratio), int(IMG_SIDE)
-    img = img.resize(new_size, Image.Resampling.LANCZOS)
-    new = Image.new(img.mode, (IMG_SIDE, IMG_SIDE), BLACK)
-    new.paste(img, (0, 0))
-    new.save(os.path.join(outdir, name))
+    copyfile(filename, os.path.join(outdir, os.path.basename(filename)))
 
 
 if __name__ == "__main__":
