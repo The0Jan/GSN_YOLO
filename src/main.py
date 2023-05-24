@@ -4,14 +4,14 @@ Opis: Punkt wejścia do programu. Obsługa argumentów wejściowych,
       pobieranie potrzebnych plików, uruchamianie modelu.
 Autor: Bartłomiej Moroz, Jan Walczak
 """
-from src.lightning.lightning_model import YOLOv3Module 
-from src.datamodules.lightning_data import MADAIDataModule
-from src.datamodules.primitive_dataloader import PrimitiveDataModule
+from src.lightning.yolo import YOLOv3Module 
+from src.datamodules.madai import MADAIDataModule
+from src.datamodules.primitive import PrimitiveDataModule
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import CSVLogger, WandbLogger, TensorBoardLogger
-from src.datasets.dataset import visualize_results
+from src.datasets.madai import visualize_results
 import os
 import gdown
 

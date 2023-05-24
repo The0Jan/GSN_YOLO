@@ -1,5 +1,5 @@
 """
-Nazwa: yolo_post.py
+Nazwa: anchor.py
 Opis: Przetwarzanie surowego wyjścia z YOLO: funkcja straty,
       dopasowywanie anchorów.
 Autor: Bartłomiej Moroz

@@ -1,5 +1,5 @@
 """
-Nazwa: lightning_model.py
+Nazwa: yolo.py
 Opis: Główny LightningModule modelu.
 Autor: Jan Walczak, Bartłomiej Moroz
 """
@@ -9,7 +9,7 @@ import pytorch_lightning as pl
 import torch
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
 from src.models.yolo import YOLOv3
-from src.processing.yolo_post import YOLOProcessor
+from src.processing.anchor import YOLOProcessor
 import wandb
 from src.other.loading_weights import load_model_parameters
 from src.processing.nms import reduce_boxes

@@ -1,5 +1,5 @@
 """
-Nazwa: primitive_dataloader.py
+Nazwa: primitive.py
 Opis: DataModule zwracający tylko zdjęcia z pojedynczego folderu (bez adnotacji).
 Autor: Bartłomiej Moroz
 """
@@ -8,8 +8,8 @@ import pytorch_lightning as pl
 from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
 from torch.utils.data import DataLoader
 from typing import List, Tuple
-from src.datasets.dataset import ResizeAndPadImage
-from src.datasets.primitive_dataset import PrimitiveDataset
+from src.datasets.madai import ResizeAndPadImage
+from src.datasets.primitive import PrimitiveDataset
 
 
 class PrimitiveDataModule(pl.LightningDataModule):

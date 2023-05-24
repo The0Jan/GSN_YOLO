@@ -1,5 +1,5 @@
 """
-Nazwa: dataset.py
+Nazwa: madai.py
 Opis: Główny dataset projektu. Zawiera także funkcje do wizualizacji wyników
       (TODO: przenieść wizualizację do innego pliku)
 Autor: Jan Walczak
@@ -15,7 +15,7 @@ import numpy as np
 from typing import Tuple
 import torch
 
-class YOLODataset(Dataset):
+class MADAIDataset(Dataset):
     def __init__(self, annotations_dir: str, image_dir: str, image_size=(416, 416),
                  transform=None, target_transform=None) -> None:
         self.annotations_dir = annotations_dir
