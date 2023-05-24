@@ -3,15 +3,16 @@ Nazwa: lightning_model.py
 Opis: Główny LightningModule modelu.
 Autor: Jan Walczak, Bartłomiej Moroz
 """
+
 from typing import Dict, List, Tuple
 import pytorch_lightning as pl
 import torch
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from yolo import YOLOv3
-from yolo_post import YOLOProcessor
+from src.models.yolo import YOLOv3
+from src.processing.yolo_post import YOLOProcessor
 import wandb
-import loading_weights
-import nms
+from src.other.loading_weights import load_model_parameters
+from src.processing.nms import reduce_boxes
 
 
 class YOLOv3Module(pl.LightningModule):
@@ -33,11 +34,11 @@ class YOLOv3Module(pl.LightningModule):
         self.proc_13 = YOLOProcessor([(116, 90), (156, 198), (373, 326)], 32, self.img_size, self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
         # Loading model weights
         if load_only_backbone:
-            loading_weights.load_model_parameters(weights_file, self.model.backbone)
+            load_model_parameters(weights_file, self.model.backbone)
             for param in self.model.backbone.parameters():
                 param.requires_grad = False
         else:
-            loading_weights.load_model_parameters(weights_file, self.model)
+            load_model_parameters(weights_file, self.model)
             for param in self.model.parameters():
                 param.requires_grad = False
 
@@ -65,7 +66,7 @@ class YOLOv3Module(pl.LightningModule):
             outputs[i] = x
         preds = torch.cat(outputs, dim=1)
         # Even more post-processing
-        results = nms.reduce_boxes(preds, min_max_size=(2, self.img_size)) if mode != 'train' else preds
+        results = reduce_boxes(preds, min_max_size=(2, self.img_size)) if mode != 'train' else preds
         return results, loss
 
     def _common_test_valid_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[float, dict]:

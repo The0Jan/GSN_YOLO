@@ -3,7 +3,7 @@ Nazwa: yolo.py
 Opis: Model YOLOv3.
 Autor: Bartłomiej Moroz
 """
-from darknet import Convolutional, Darknet53
+from src.models.darknet import Convolutional, Darknet53
 import torch
 import torch.nn as nn
 from typing import Tuple

@@ -1,5 +1,5 @@
 """
-Nazwa: preprocess_once.py
+Nazwa: preprocess_dataset.py
 Opis: Skrypt do jednorazowego przetwarzania wstępnego zbioru danych
       na format, który nam bardziej odpowiada. Adnotacje z XML do CSV,
       zmiana struktury folderów.
@@ -39,6 +39,7 @@ def process_xml(filename: str) -> List[List[str]]:
         boxes.append([classLUT[name.text], bndbox.find('xmin').text, bndbox.find('ymin').text, bndbox.find('xmax').text, bndbox.find('ymax').text])
     return boxes
 
+
 def process_xml_depracated(filename: str) -> List[List[str]]:
     """
     DEPRECATED.
@@ -51,6 +52,7 @@ def process_xml_depracated(filename: str) -> List[List[str]]:
         bndbox = child.find('bndbox')
         boxes.append([classLUT[name.text], bndbox.find('xmin').text, bndbox.find('ymin').text, bndbox.find('xmax').text, bndbox.find('ymax').text])
     return boxes
+
 
 def process_annotations(filename: str, outdir: str) -> None:
     """
@@ -72,6 +74,7 @@ def process_images(filename: str, outdir: str) -> None:
     img = Image.open(filename)
     img.save(os.path.join(outdir, name))
 
+
 def process_images_depracted(filename: str, outdir: str) -> None:
     """
     DEPRECATED.
@@ -89,6 +92,7 @@ def process_images_depracted(filename: str, outdir: str) -> None:
     new = Image.new(img.mode, (IMG_SIDE, IMG_SIDE), BLACK)
     new.paste(img, (0, 0))
     new.save(os.path.join(outdir, name))
+
 
 if __name__ == "__main__":
     TRAIN_ZIP_IN = 'train-MADAI'

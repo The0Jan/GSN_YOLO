@@ -4,7 +4,7 @@ Opis: Główny DataModule używany do trenowania i testowania.
 Autor: Jan Walczak
 """
 import torch
-import dataset
+from src.datasets.dataset import YOLODataset, ResizeAndPadImage, ResizeAndPadBoxes
 import gdown
 import zipfile
 import pytorch_lightning as pl
@@ -55,18 +55,18 @@ class MADAIDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         if stage == 'fit' or stage is None:
-            dataset_yolo = dataset.YOLODataset(self.train_anno_dir, self.train_img_dir, 
-                                               transform = self.img_transform,
-                                               target_transform = self.target_transform,
-                                               image_size = self.image_size)
+            dataset_yolo = YOLODataset(self.train_anno_dir, self.train_img_dir, 
+                                       transform = self.img_transform,
+                                       target_transform = self.target_transform,
+                                       image_size = self.image_size)
             train_dataset_size = int(len(dataset_yolo) * 0.9)
             self.dataset_train, self.dataset_val  = random_split(dataset_yolo, [train_dataset_size, len(dataset_yolo) - train_dataset_size])
 
         if stage == 'test' or stage is None:
-            self.dataset_test = dataset.YOLODataset(self.test_anno_dir, self.test_img_dir,
-                                                    transform = self.img_transform,
-                                                    target_transform = self.target_transform,
-                                                    image_size = self.image_size)
+            self.dataset_test = YOLODataset(self.test_anno_dir, self.test_img_dir,
+                                            transform = self.img_transform,
+                                            target_transform = self.target_transform,
+                                            image_size = self.image_size)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
@@ -78,10 +78,10 @@ class MADAIDataModule(pl.LightningDataModule):
         return DataLoader(self.dataset_val, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
     def get_img_transform(self):
-        return Compose([dataset.ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        return Compose([ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
 
     def get_target_transform(self):
-        return dataset.ResizeAndPadBoxes(416)
+        return ResizeAndPadBoxes(416)
 
     def _collate_fn(self, batch):
         """
