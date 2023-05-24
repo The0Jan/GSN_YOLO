@@ -6,7 +6,6 @@ Autor: Jan Walczak (alpha), Bartłomiej Moroz (final)
 import numpy as np
 import torch.nn as nn
 import torch
-from typing import List, Tuple
 
 
 def load_params(input_file, params: list):

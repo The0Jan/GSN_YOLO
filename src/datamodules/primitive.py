@@ -3,13 +3,13 @@ Nazwa: primitive.py
 Opis: DataModule zwracający tylko zdjęcia z pojedynczego folderu (bez adnotacji).
 Autor: Bartłomiej Moroz
 """
-import torch
 import pytorch_lightning as pl
-from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
-from torch.utils.data import DataLoader
-from typing import List, Tuple
 from src.datasets.madai import ResizeAndPadImage
 from src.datasets.primitive import PrimitiveDataset
+import torch
+from torch.utils.data import DataLoader
+from torchvision.transforms import Compose, Normalize, ToTensor
+from typing import List, Tuple
 
 
 class PrimitiveDataModule(pl.LightningDataModule):

@@ -4,16 +4,16 @@ Opis: Główny dataset projektu. Zawiera także funkcje do wizualizacji wyników
       (TODO: przenieść wizualizację do innego pliku)
 Autor: Jan Walczak
 """
-import os
-from torch.utils.data import Dataset
-from torchvision.transforms import Compose, ToTensor, Normalize
-from torchvision.transforms import ToPILImage
-import PIL
-from PIL import Image
 import cv2
 import numpy as np
-from typing import Tuple
+import os
+import PIL
+from PIL import Image
 import torch
+from torch.utils.data import Dataset
+from torchvision.transforms import Compose, Normalize, ToPILImage, ToTensor
+from typing import Tuple
+
 
 class MADAIDataset(Dataset):
     def __init__(self, annotations_dir: str, image_dir: str, image_size=(416, 416),

@@ -4,11 +4,11 @@ Opis: Dataset zwracający tylko zdjęcia z folderu (bez adnotacji).
 Autor: Bartłomiej Moroz
 """
 import os
+from PIL import Image
+import torch
 from torch.utils.data import Dataset
 from torchvision.transforms import Compose, ToTensor
-from PIL import Image
 from typing import Tuple
-import torch
 
 
 class PrimitiveDataset(Dataset):

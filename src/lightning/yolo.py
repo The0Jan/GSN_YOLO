@@ -3,16 +3,14 @@ Nazwa: yolo.py
 Opis: Główny LightningModule modelu.
 Autor: Jan Walczak, Bartłomiej Moroz
 """
-
-from typing import Dict, List, Tuple
 import pytorch_lightning as pl
+from src.models.yolo import YOLOv3
+from src.other.loading_weights import load_model_parameters
+from src.processing.anchor import YOLOProcessor
+from src.processing.nms import reduce_boxes
 import torch
 from torchmetrics.detection.mean_ap import MeanAveragePrecision
-from src.models.yolo import YOLOv3
-from src.processing.anchor import YOLOProcessor
-import wandb
-from src.other.loading_weights import load_model_parameters
-from src.processing.nms import reduce_boxes
+from typing import Dict, List, Tuple
 
 
 class YOLOv3Module(pl.LightningModule):

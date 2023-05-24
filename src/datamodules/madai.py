@@ -3,15 +3,14 @@ Nazwa: madai.py
 Opis: Główny DataModule używany do trenowania i testowania.
 Autor: Jan Walczak
 """
-import torch
-from src.datasets.madai import MADAIDataset, ResizeAndPadImage, ResizeAndPadBoxes
 import gdown
-import zipfile
-import pytorch_lightning as pl
-from torchvision.transforms import Compose
-from torchvision.transforms import Compose, ToTensor, Normalize, Lambda
-from torch.utils.data import DataLoader, random_split
 import os
+import pytorch_lightning as pl
+from src.datasets.madai import MADAIDataset, ResizeAndPadBoxes, ResizeAndPadImage
+import torch
+from torch.utils.data import DataLoader, random_split
+from torchvision.transforms import Compose, Normalize, ToTensor
+import zipfile
 
 
 class MADAIDataModule(pl.LightningDataModule):
