@@ -91,10 +91,7 @@ class ResizeAndPadBoxes():
         self.img_size = img_size
 
     def __call__(self, org_size: Tuple[int, int], bbs: BoundingBox, inverse=False) -> BoundingBox:
-        if not inverse:
-            ratio = org_size[0] / org_size[1]
-        else:
-            ratio = self.img_size
+        ratio = org_size[0] / org_size[1]
         # Get scaled size of the image
         if ratio > 1:
             scaled_size = self.img_size, int(self.img_size / ratio)
@@ -103,9 +100,9 @@ class ResizeAndPadBoxes():
         # Resize and pad
         if not inverse:
             bbs = scale_bbs(bbs, org_size, scaled_size)
-            bbs = center_bbs(bbs, (self.img_size, self.img_size), scaled_size, ratio)
+            bbs = center_bbs(bbs, scaled_size, (self.img_size, self.img_size), ratio)
         else:
-            bbs = center_bbs(bbs, (-self.img_size, -self.img_size), tuple([-x for x in scaled_size]), ratio)
+            bbs = center_bbs(bbs, tuple([-x for x in scaled_size]), (-self.img_size, -self.img_size), ratio)
             bbs = scale_bbs(bbs, scaled_size, org_size)
         return bbs
 
@@ -176,3 +173,10 @@ def visualize_results(img_path: str, out_dir: str, targets: Union[torch.Tensor, 
         image = draw_box(image, bbox, int(target[6]))
     out_path = os.path.join(out_dir, os.path.basename(img_path))
     Image.fromarray(image).save(out_path)
+
+if __name__ == '__main__':
+    bbox = [64.55278778076172, 166.67079162597656, 304.2171325683594, 327.16607666015625]
+    image_size = (502, 346)
+    resizer = ResizeAndPadBoxes(416)
+    bbox = resizer(image_size, bbox, inverse=True)
+    print(bbox)
