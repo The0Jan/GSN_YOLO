@@ -20,7 +20,9 @@ def transform_bbox(bboxes: torch.Tensor) -> torch.Tensor:
     return new_bboxes
 
 
-def apply_confidence_threshold(predictions: torch.Tensor, objectness_confidence: float) -> torch.Tensor:
+def apply_confidence_threshold(
+    predictions: torch.Tensor, objectness_confidence: float
+) -> torch.Tensor:
     """
     Filter out predictions that are below objectness confidence threshold.
     """
@@ -57,13 +59,17 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
         _, sorted_indices = torch.sort(preds_of_class[..., 4], descending=True)
         preds_of_class = preds_of_class[sorted_indices]
         # NMS proper
-        result_indices = torchvision.ops.nms(preds_of_class[..., :4], preds_of_class[..., 4], iou)
+        result_indices = torchvision.ops.nms(
+            preds_of_class[..., :4], preds_of_class[..., 4], iou
+        )
         preds_of_class = preds_of_class[result_indices]
         results = torch.cat([results, preds_of_class], dim=0)
     return results
 
 
-def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)) -> torch.Tensor:
+def reduce_boxes(
+    predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)
+) -> torch.Tensor:
     """
     Given a batch of predictions, perform some transformations and reduce them to only the meaningful ones:
       - filter out low objectness
@@ -82,7 +88,9 @@ def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, m
         # Filter out low objectness results
         x = apply_confidence_threshold(x, confidence_threshold)
         # Filter out invalid box width/height
-        x = x[((x[..., 2:4] > min_max_size[0]) & (x[..., 2:4] < min_max_size[1])).all(1)]
+        x = x[
+            ((x[..., 2:4] > min_max_size[0]) & (x[..., 2:4] < min_max_size[1])).all(1)
+        ]
         if x.size(0) == 0:
             continue
         # Transform bbox from (x, y, w, h, ...) into (x1, y1, x2, y2, ...)

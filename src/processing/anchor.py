@@ -9,11 +9,22 @@ import torch.nn as nn
 import torchvision
 from typing import List, Tuple
 
-class YOLOProcessor():
+
+class YOLOProcessor:
     """
     Helper class that processes model outputs for one prediction head.
     """
-    def __init__(self, anchors: List[Tuple[int, int]], stride: int, img_size: int, num_classes: int, obj_coff=1, noobj_coff=100, ignore_threshold=0.5) -> None:
+
+    def __init__(
+        self,
+        anchors: List[Tuple[int, int]],
+        stride: int,
+        img_size: int,
+        num_classes: int,
+        obj_coff=1,
+        noobj_coff=100,
+        ignore_threshold=0.5,
+    ) -> None:
         super().__init__()
         self.num_outputs = num_classes + 4 + 1
         self.num_anchors = len(anchors)
@@ -30,7 +41,11 @@ class YOLOProcessor():
         # Turn array of (width, height) anchor sizes (in pixels) into a tensor with (width, height) in cells.
         # Achieve that by flattening anchor sizes into a 1D list, turning into a tensor,
         # then reshaping into (batches, anchors, grid_size, grid_size, values)
-        self.anchors = torch.tensor([x / self.stride for anchor in anchors for x in anchor]).float().view(1, -1, 1, 1, 2)
+        self.anchors = (
+            torch.tensor([x / self.stride for anchor in anchors for x in anchor])
+            .float()
+            .view(1, -1, 1, 1, 2)
+        )
 
     def reshape_and_sigmoid(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -40,7 +55,11 @@ class YOLOProcessor():
         # Reshape output tensor
         # from (batches, all_outputs, grid_size, grid_size) into (batches, anchors, grid_size, grid_size, outputs)
         batches, _, grid_size, grid_size = x.shape
-        x = x.view(batches, self.num_anchors, self.num_outputs, grid_size, grid_size).permute(0, 1, 3, 4, 2).contiguous()
+        x = (
+            x.view(batches, self.num_anchors, self.num_outputs, grid_size, grid_size)
+            .permute(0, 1, 3, 4, 2)
+            .contiguous()
+        )
         # Sigmoids
         x[..., 0:2] = torch.sigmoid(x[..., 0:2])
         x[..., 4:] = torch.sigmoid(x[..., 4:])
@@ -52,20 +71,34 @@ class YOLOProcessor():
         format, where coordinates are in [0, 416) range.
         """
         # Transform ground truths from "human" format to one matching raw predictions output.
-        truths, obj_mask, noobj_mask = self._transform_truths(predictions, targets, self.anchors.view(-1, 2), self.ignore_threshold)
+        truths, obj_mask, noobj_mask = self._transform_truths(
+            predictions, targets, self.anchors.view(-1, 2), self.ignore_threshold
+        )
         # Bounding box loss
         loss_x = self.mse_loss(predictions[..., 0][obj_mask], truths[..., 0][obj_mask])
         loss_y = self.mse_loss(predictions[..., 1][obj_mask], truths[..., 1][obj_mask])
         loss_w = self.mse_loss(predictions[..., 2][obj_mask], truths[..., 2][obj_mask])
         loss_h = self.mse_loss(predictions[..., 3][obj_mask], truths[..., 3][obj_mask])
         # Objectness loss
-        loss_obj = self.bce_loss(predictions[..., 4][obj_mask], truths[..., 4][obj_mask])
-        loss_noobj = self.bce_loss(predictions[..., 4][noobj_mask], truths[..., 4][noobj_mask])
+        loss_obj = self.bce_loss(
+            predictions[..., 4][obj_mask], truths[..., 4][obj_mask]
+        )
+        loss_noobj = self.bce_loss(
+            predictions[..., 4][noobj_mask], truths[..., 4][noobj_mask]
+        )
         # Classification loss
-        loss_class = self.bce_loss(predictions[..., 5:][obj_mask], truths[..., 5:][obj_mask])
-        return loss_x + loss_y + loss_w + loss_h\
-             + self.obj_coff * loss_obj + self.noobj_coff * loss_noobj\
-             + loss_class
+        loss_class = self.bce_loss(
+            predictions[..., 5:][obj_mask], truths[..., 5:][obj_mask]
+        )
+        return (
+            loss_x
+            + loss_y
+            + loss_w
+            + loss_h
+            + self.obj_coff * loss_obj
+            + self.noobj_coff * loss_noobj
+            + loss_class
+        )
 
     def process_after_loss(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -80,17 +113,24 @@ class YOLOProcessor():
         # (w, h) = exp((tw, th)) * (aw, ah)
         # Clone and detch, because we don't want this in our gradient propagation.
         predictions = x.clone().detach()
-        predictions[..., 0:2] = x[..., 0:2] + self.grid               # anchor x, y (in cells)
-        predictions[..., 2:4] = torch.exp(x[..., 2:4]) * self.anchors # anchor width, height (in cells)
-        predictions[..., 4:] = x[..., 4:]                             # confidence, class
+        predictions[..., 0:2] = x[..., 0:2] + self.grid  # anchor x, y (in cells)
+        predictions[..., 2:4] = (
+            torch.exp(x[..., 2:4]) * self.anchors
+        )  # anchor width, height (in cells)
+        predictions[..., 4:] = x[..., 4:]  # confidence, class
         # Turn bbox (in cells) to bbox (in pixels)
         predictions[..., :4] *= self.stride
         # Final shape is just a batched list of outputs
         predictions = predictions.view(x.size(0), -1, self.num_outputs)
         return predictions
 
-    def _transform_truths(self, predictions: torch.Tensor, targets: torch.Tensor,
-                          anchors: torch.Tensor, ignore_threshold: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def _transform_truths(
+        self,
+        predictions: torch.Tensor,
+        targets: torch.Tensor,
+        anchors: torch.Tensor,
+        ignore_threshold: float,
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Transform ground truths from "human readable" format of (class, x1, y1, x2, y2) to format
         that matches raw model predictions, such that loss can be calculated easily.
@@ -140,7 +180,9 @@ class YOLOProcessor():
         # Set output x, y
         truths[img_idx, best_anchors, gij[..., 1], gij[..., 0], 0:2] = cxy - cxy.floor()
         # Set output w, h
-        truths[img_idx, best_anchors, gij[..., 1], gij[..., 0], 2:4] = torch.log(bwh / anchors[best_anchors] + EPS)
+        truths[img_idx, best_anchors, gij[..., 1], gij[..., 0], 2:4] = torch.log(
+            bwh / anchors[best_anchors] + EPS
+        )
         # Anchor match in truths
         truths[..., 4] = obj_mask.float()
         # One-hot encoding class
@@ -155,20 +197,26 @@ class YOLOProcessor():
         [[[[0,0], [1,0]],
           [[0,1], [1,1]]]] etc.
         """
-        x, y = torch.meshgrid([torch.arange(grid_size), torch.arange(grid_size)], indexing='ij')
-        return torch.stack((x, y), dim=2).view(1, 1, grid_size, grid_size, 2).float()[..., [1, 0]]
+        x, y = torch.meshgrid(
+            [torch.arange(grid_size), torch.arange(grid_size)], indexing="ij"
+        )
+        return (
+            torch.stack((x, y), dim=2)
+            .view(1, 1, grid_size, grid_size, 2)
+            .float()[..., [1, 0]]
+        )
 
     def _xyxy2xywh(self, boxes: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         bwh = boxes.new(boxes.size(0), 2)
         cxy = boxes.new(bwh.shape)
         for i in range(2):
-            bwh[..., i] = boxes[..., i+2] - boxes[..., i]
+            bwh[..., i] = boxes[..., i + 2] - boxes[..., i]
             cxy[..., i] = boxes[..., i] + bwh[..., i] / 2
         return cxy, bwh
 
     def _xywh2xyxy(self, boxes: torch.Tensor) -> torch.Tensor:
         new_boxes = boxes.new(boxes.shape)
         for i in range(2):
-            new_boxes[..., i]   = boxes[..., i] - boxes[..., i+2] / 2
-            new_boxes[..., i+2] = boxes[..., i] + boxes[..., i+2] / 2
+            new_boxes[..., i] = boxes[..., i] - boxes[..., i + 2] / 2
+            new_boxes[..., i + 2] = boxes[..., i] + boxes[..., i + 2] / 2
         return new_boxes

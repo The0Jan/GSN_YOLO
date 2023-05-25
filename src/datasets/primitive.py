@@ -16,6 +16,7 @@ class PrimitiveDataset(Dataset):
     A dataset that provides input images info in the same format as MADAIDataset,
     but with no annotations. Primary use case is for manual testing and predictions.
     """
+
     Item = Tuple[torch.Tensor, list, str, Tuple[int, int]]
 
     def __init__(self, image_dir: str, transform=None) -> None:
@@ -29,8 +30,8 @@ class PrimitiveDataset(Dataset):
     def __getitem__(self, idx: int) -> Item:
         image_path = os.path.join(self.image_dir, self.image_list[idx])
         bboxes = []
-        image = Image.open(image_path).convert('RGB')
+        image = Image.open(image_path).convert("RGB")
         original_size = image.size
         if self.transform is not None:
             image = self.transform(image)
-        return image, bboxes, image_path, original_size # type: ignore
+        return image, bboxes, image_path, original_size  # type: ignore
