@@ -14,10 +14,20 @@ class Convolutional(nn.Module):
     a normalization layer and leaky ReLU activation layer.
     Kernel size of 3 implies padding of 1, else we get mismatched output shapes.
     """
-    def __init__(self, in_channels: int, out_channels: int, kernel_size=1, **kwargs) -> None:
+
+    def __init__(
+        self, in_channels: int, out_channels: int, kernel_size=1, **kwargs
+    ) -> None:
         super().__init__()
         self.layers = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, bias=False, kernel_size=kernel_size, padding=kernel_size//2, **kwargs),
+            nn.Conv2d(
+                in_channels,
+                out_channels,
+                bias=False,
+                kernel_size=kernel_size,
+                padding=kernel_size // 2,
+                **kwargs
+            ),
             nn.BatchNorm2d(out_channels, momentum=0.03),
             nn.LeakyReLU(0.1),
         )
@@ -32,6 +42,7 @@ class Residual(nn.Module):
     Residual layer containing 1x1 and 3x3 convolutional blocks and an additive
     skip connection.
     """
+
     def __init__(self, in_channels: int) -> None:
         super().__init__()
         self.layers = nn.Sequential(
@@ -49,6 +60,7 @@ class ResidualBlock(nn.Module):
     """
     Block of repeated Residual layers, prefixed with a x2 downsampling convolutional layer.
     """
+
     def __init__(self, repeat, in_channels, out_channels) -> None:
         super().__init__()
         self.block = nn.Sequential(
@@ -65,19 +77,24 @@ class Darknet53(nn.Module):
     """
     Complete Darknet53 module. See darknet.drawio diagram for details.
     """
+
     def __init__(self, in_channels) -> None:
         super().__init__()
         # Starting point
-        self.conv = Convolutional(in_channels=in_channels, out_channels=32, kernel_size=3, stride=1)
+        self.conv = Convolutional(
+            in_channels=in_channels, out_channels=32, kernel_size=3, stride=1
+        )
         # Residual blocks
-        self.block_1 = ResidualBlock(repeat=1, in_channels=32,  out_channels=64)
-        self.block_2 = ResidualBlock(repeat=2, in_channels=64,  out_channels=128)
+        self.block_1 = ResidualBlock(repeat=1, in_channels=32, out_channels=64)
+        self.block_2 = ResidualBlock(repeat=2, in_channels=64, out_channels=128)
         self.block_3 = ResidualBlock(repeat=8, in_channels=128, out_channels=256)
         self.block_4 = ResidualBlock(repeat=8, in_channels=256, out_channels=512)
         self.block_5 = ResidualBlock(repeat=4, in_channels=512, out_channels=1024)
         # Fully connected layer omitted
 
-    def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         # Starting point
         x = self.conv(x)
         # Residual blocks
