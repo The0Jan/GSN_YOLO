@@ -36,17 +36,17 @@ class PrimitiveDataModule(pl.LightningDataModule):
     def setup(self, stage=None) -> None:
         self.dataset = PrimitiveDataset(self.img_dir, transform=self.img_transform)
 
-    def train_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=True, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
+    def train_dataloader(self, shuffle=True) -> DataLoader:
+        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=shuffle, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
+        return self.train_dataloader(shuffle=False)
 
     def val_dataloader(self) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=False, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
+        return self.train_dataloader(shuffle=False)
 
     def predict_dataloader(self, shuffle=False) -> DataLoader:
-        return DataLoader(self.dataset, batch_size=self.batch_size, shuffle=shuffle, pin_memory=True, num_workers=self.num_workers, collate_fn=self._collate_fn)
+        return self.train_dataloader(shuffle=shuffle)
 
     def _get_img_transform(self) -> Compose:
         return Compose([ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])

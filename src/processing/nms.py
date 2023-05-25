@@ -9,7 +9,7 @@ import torch
 import torchvision
 
 
-def transform_bbox(bboxes: torch.Tensor):
+def transform_bbox(bboxes: torch.Tensor) -> torch.Tensor:
     """
     Transform bounding boxes from (x, y, w, h) into (x1, y1, x2, y2).
     """
@@ -63,7 +63,7 @@ def non_maximum_suppression(x: torch.Tensor, iou: float) -> torch.Tensor:
     return results
 
 
-def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)):
+def reduce_boxes(predictions: torch.Tensor, confidence_threshold=0.3, iou=0.5, min_max_size=(2, 416)) -> torch.Tensor:
     """
     Given a batch of predictions, perform some transformations and reduce them to only the meaningful ones:
       - filter out low objectness

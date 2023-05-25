@@ -52,7 +52,7 @@ class YOLOProcessor():
         format, where coordinates are in [0, 416) range.
         """
         # Transform ground truths from "human" format to one matching raw predictions output.
-        truths, obj_mask, noobj_mask, class_mask, ious = self._transform_truths(predictions, targets, self.anchors.view(-1, 2), self.ignore_threshold)
+        truths, obj_mask, noobj_mask = self._transform_truths(predictions, targets, self.anchors.view(-1, 2), self.ignore_threshold)
         # Bounding box loss
         loss_x = self.mse_loss(predictions[..., 0][obj_mask], truths[..., 0][obj_mask])
         loss_y = self.mse_loss(predictions[..., 1][obj_mask], truths[..., 1][obj_mask])
@@ -90,7 +90,7 @@ class YOLOProcessor():
         return predictions
 
     def _transform_truths(self, predictions: torch.Tensor, targets: torch.Tensor,
-                          anchors: torch.Tensor, ignore_threshold: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+                          anchors: torch.Tensor, ignore_threshold: float) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """
         Transform ground truths from "human readable" format of (class, x1, y1, x2, y2) to format
         that matches raw model predictions, such that loss can be calculated easily.
@@ -110,10 +110,6 @@ class YOLOProcessor():
         obj_mask = predictions.new_zeros(predictions.shape[:4]).bool()
         # Opposite of obj_mask that also has zeroes when IoU of truth and anchors is higher that ignore_threshold
         noobj_mask = predictions.new_ones(obj_mask.shape).bool()
-        # Mask of best anchor fits that also have matching classes
-        class_mask = predictions.new_zeros(obj_mask.shape).float()
-        # Tensor of some IoUs for something ???
-        ious = predictions.new_zeros(obj_mask.shape).float()
         # Unpack ground truths
         img_idx, t_class = targets[..., :2].long().t()
         # Box coordinates are scaled to (0, 416), but we want (0, GRID_SIZE)
@@ -150,16 +146,9 @@ class YOLOProcessor():
         truths[..., 4] = obj_mask.float()
         # One-hot encoding class
         truths[img_idx, best_anchors, gij[..., 1], gij[..., 0], t_class + 5] = 1
-        # Class correctness and IoU of matched anchors - not for loss, but for later metrics
-        pred_xywh = predictions[img_idx, best_anchors, gij[..., 1], gij[..., 0], :4]
-        pred_class_confs = predictions[img_idx, best_anchors, gij[..., 1], gij[..., 0], 5:]
-        pred_conf, pred_class = torch.max(pred_class_confs, dim=-1)
-        class_mask[img_idx, best_anchors, gij[..., 1], gij[..., 0]] = (pred_class == t_class).float()
-        # box_iou gives cartesian product, but we only want comparisons with the same row, so we use diagonal
-        ious[img_idx, best_anchors, gij[..., 1], gij[..., 0]] = torchvision.ops.box_iou(self._xywh2xyxy(pred_xywh), targets[..., 2:6]).diag()
         # Revert from (0, GRID_SIZE) to -> (0, 416) (otherwise targets end up modified)
         targets[..., 2:6] *= self.stride
-        return truths, obj_mask, noobj_mask, class_mask, ious
+        return truths, obj_mask, noobj_mask
 
     def _make_grid(self, grid_size: int) -> torch.Tensor:
         """

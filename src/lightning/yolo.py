@@ -43,12 +43,12 @@ class YOLOv3Module(pl.LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
-    def _common_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[torch.Tensor, float]:
+    def _common_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[torch.Tensor, float, dict]:
         """
         Run model forward pass and, depending on supplied mode, execute some post-processing functions.
-        `train`:          forward, reshape_and_sigmoid, loss, process_after_loss, _
-        `test` and `val`: forward, reshape_and_sigmoid, loss, process_after_loss, reduce_boxes
-        `predict`:        forward, reshape_and_sigmoid, _,    process_after_loss, reduce_boxes
+        `train`:          forward, reshape_and_sigmoid, loss, process_after_loss, _,            _
+        `test` and `val`: forward, reshape_and_sigmoid, loss, process_after_loss, reduce_boxes, _calc_mAP
+        `predict`:        forward, reshape_and_sigmoid, _,    process_after_loss, reduce_boxes, _
         """
         img_tensor, targets, _, _, = batch
         loss = 0
@@ -65,37 +65,29 @@ class YOLOv3Module(pl.LightningModule):
         preds = torch.cat(outputs, dim=1)
         # Even more post-processing
         results = reduce_boxes(preds, min_max_size=(2, self.img_size)) if mode != 'train' else preds
-        return results, loss
+        # Metrics
+        mAP_dict = self._calc_mAP(results, targets) if mode in ('test', 'val') else {}
+        return results, loss, mAP_dict
 
-    def _common_test_valid_step(self, batch: list, batch_idx: int, mode: str) -> Tuple[float, dict]:
-        """
-        Run _common_step and calculate mAP
-        TODO: Move mAP to _common_step and activate only for train and val?
-        """
-        _, targets, _, _, = batch
-        results, loss = self._common_step(batch, batch_idx, mode)
-        mAP_dict = self._calc_mAP(results, targets)
-        return loss, mAP_dict
-
-    def predict_step(self, batch: list, batch_idx: int):
+    def predict_step(self, batch: list, batch_idx: int) -> dict:
         _, _, img_path, org_size, = batch
-        results, _ = self._common_step(batch, batch_idx, mode='predict')
+        results, _, _ = self._common_step(batch, batch_idx, mode='predict')
         return {'results': results, 'img_path': img_path, 'org_size': org_size}
 
     def training_step(self, batch, batch_idx: int) -> float:
-        _, loss = self._common_step(batch, batch_idx, mode='train')
+        _, loss, _ = self._common_step(batch, batch_idx, mode='train')
         self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)      
         return loss
 
     def test_step(self, batch, batch_idx: int) -> Dict[str, float]:
-        loss, mAP_dict = self._common_test_valid_step(batch, batch_idx, mode='test')
+        _, loss, mAP_dict = self._common_step(batch, batch_idx, mode='test')
         self.log('test_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('test_mAP', mAP_dict['map'].item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('test_mAP50', mAP_dict['map_50'].item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         return {'test_loss': loss, 'test_mAP': mAP_dict['map'].item(), 'test_mAP50': mAP_dict['map_50'].item()}
 
     def validation_step(self, batch, batch_idx: int) -> Dict[str, float]:
-        loss, mAP_dict = self._common_test_valid_step(batch, batch_idx, mode='val')
+        _, loss, mAP_dict = self._common_step(batch, batch_idx, mode='val')
         self.log('val_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_mAP', mAP_dict['map'].item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
         self.log('val_mAP50', mAP_dict['map_50'].item(), on_step=True, on_epoch=True, prog_bar=True, logger=True)
@@ -107,7 +99,7 @@ class YOLOv3Module(pl.LightningModule):
 
     def _calc_mAP(self, predictions: torch.Tensor, targets: torch.Tensor) -> float:
         """
-        Calculate mAP for predictions. Returns a dictionary with various mAPs and mARs (unused).
+        Calculate mAP for predictions. Returns a dictionary with various mAPs and mARs (latter unused).
         """
         map = MeanAveragePrecision()
         preds = []

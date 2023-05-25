@@ -60,7 +60,6 @@ class MADAIDataModule(pl.LightningDataModule):
                                         image_size = self.image_size)
             train_dataset_size = int(len(dataset_yolo) * 0.9)
             self.dataset_train, self.dataset_val  = random_split(dataset_yolo, [train_dataset_size, len(dataset_yolo) - train_dataset_size])
-
         if stage == 'test' or stage is None:
             self.dataset_test = MADAIDataset(self.test_anno_dir, self.test_img_dir,
                                              transform = self.img_transform,
@@ -98,13 +97,3 @@ class MADAIDataModule(pl.LightningDataModule):
             dim=0,
         )
         return image_batch, annotation_batch, img_path_batch, org_size_batch
-
-
-def assign_batch_index_to_bbx(target, batch_index):
-    """
-    Former function used in the collate function. At this point deprecated.
-    TODO: Remove it.
-    """
-    for i, bbx in enumerate(target):
-        target[i] = [batch_index, *bbx]
-    return target

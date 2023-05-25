@@ -7,7 +7,7 @@ import os
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, ToTensor
+from torchvision.transforms import ToTensor
 from typing import Tuple
 
 
