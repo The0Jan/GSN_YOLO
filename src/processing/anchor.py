@@ -95,7 +95,6 @@ class YOLOProcessor():
         Transform ground truths from "human readable" format of (class, x1, y1, x2, y2) to format
         that matches raw model predictions, such that loss can be calculated easily.
         Based on: https://github.com/v-iashin/WebsiteYOLO/blob/master/darknet.py#L237 (REALLY nice comments)
-        TODO: Remove class_mask and iou, since we calculate metrics in a different way.
         """
         # Tensor of same shape as predictions (batches, anchors, grid, grid, outputs) but with different outputs.
         # Outputs are (x, y, w, h, conf, classes) like predictions, but only filled for elements that best match ground truth.

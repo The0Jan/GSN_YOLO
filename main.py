@@ -1,3 +1,8 @@
+"""
+Nazwa: main.py
+Opis: Punkt wejścia do programu. Obsługa argumentów wejściowych.
+Autor: Bartłomiej Moroz, Jan Walczak
+"""
 import argparse
 from src.main import main
 

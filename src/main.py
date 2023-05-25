@@ -1,7 +1,6 @@
 """
-Nazwa: dataset.py
-Opis: Punkt wejścia do programu. Obsługa argumentów wejściowych,
-      pobieranie potrzebnych plików, uruchamianie modelu.
+Nazwa: main.py
+Opis: Pobieranie potrzebnych plików, uruchamianie modelu.
 Autor: Bartłomiej Moroz, Jan Walczak
 """
 import gdown
@@ -19,6 +18,7 @@ from src.other.visualizing_results import visualize_results
 CHECKPOINT_GID_BEST = "16x4pcp_mWr-MSv0TcliAGyfk843EjXWp"
 CHECKPOINT_GID_SECOND = "1IlvbUfkeNNjITpWeG3IsJPJSrg2nPEhf"
 
+
 def predict(model, datamodule, output, batch_count):
     # Prepare output directory
     os.makedirs(output, exist_ok=True)
@@ -31,7 +31,7 @@ def predict(model, datamodule, output, batch_count):
         batches += 1
         # Visualize results and save to files
         for i in range(len(y['img_path'])):
-            r = y['results'].clone()
+            r = y['results']
             visualize_results(y['img_path'][i], output, r[r[..., 0] == i, :].tolist())
 
 
@@ -39,8 +39,7 @@ def download(weights_dir: str, model_dir: str, model_gid: str):
     # Download pretrained weights
     weights_gid = "1mL2BC_UM3iHXMZFmKgrlO9jP5yVdYMbr"
     weights_file = "darknet53.conv.74"
-    if not os.path.isdir(weights_dir):
-        os.mkdir(weights_dir)
+    os.makedirs(weights_dir, exist_ok=True)
     weights_file = os.path.join(weights_dir, weights_file)
     if not os.path.isfile(weights_file):
         gdown.download(id=weights_gid, output=weights_file)
@@ -48,8 +47,7 @@ def download(weights_dir: str, model_dir: str, model_gid: str):
     if model_gid is not None:
         model_dir = "model"
         model_file = model_gid + ".ckpt"
-        if not os.path.isdir(model_dir):
-            os.mkdir(model_dir)
+        os.makedirs(model_dir, exist_ok=True)
         model_file = os.path.join(model_dir, model_file)
         if not os.path.isfile(model_file):
             gdown.download(id=model_gid, output=model_file)
