@@ -31,7 +31,7 @@ def predict(model, datamodule, output, batch_count):
         batches += 1
         # Visualize results and save to files
         for i in range(len(y['img_path'])):
-            r = y['results']
+            r = y['results'].clone()
             visualize_results(y['img_path'][i], output, r[r[..., 0] == i, :].tolist())
 
 
@@ -105,4 +105,5 @@ def main(args):
     elif args.mode == 'test':
         trainer.test(model=yolo_model, datamodule=data_model)
     elif args.mode == 'predict':
+        yolo_model.eval()
         predict(model=yolo_model, datamodule=data_model, output=args.output, batch_count=args.batch_count)

@@ -11,8 +11,11 @@ import PIL
 from PIL import Image
 import torch
 from torch.utils.data import Dataset
-from torchvision.transforms import Compose, Normalize, ToPILImage, ToTensor
-from typing import Tuple
+from torchvision.transforms import ToTensor
+from typing import List, Tuple, Union
+
+
+BoundingBox = Union[List[float], torch.Tensor]
 
 
 class MADAIDataset(Dataset):
@@ -21,9 +24,8 @@ class MADAIDataset(Dataset):
         self.annotations_dir = annotations_dir
         self.img_dir = image_dir
         self.image_size = image_size
-        self.transform = transform if transform is not None else Compose([ToTensor()])
+        self.transform = transform if transform is not None else ToTensor()
         self.target_transform = target_transform
-        
         # Get list of images and list of annotations files in given directories
         self.image_list = os.listdir(image_dir)
         self.annotations_list = os.listdir(annotations_dir)
@@ -35,14 +37,12 @@ class MADAIDataset(Dataset):
         img_path = os.path.join(self.img_dir, self.image_list[idx])
         anno_path = os.path.join(self.annotations_dir, self.annotations_list[idx])
         bboxes = []
-        
         # Fetch image
         image = Image.open(img_path).convert('RGB')
         org_size = image.size
         # Perform transformation on image
         if self.transform is not None:
             image = self.transform(image)
-            
         # Fetch data about bounding boxes from annotations file
         with open(anno_path, 'r') as anno_obj:
             for line in anno_obj.readlines():
@@ -50,8 +50,8 @@ class MADAIDataset(Dataset):
                 bboxes.append(elements)
         # Apply transformation to every bounding box for a single image       
         if self.target_transform is not None:
-            bboxes = [self.target_transform(org_size, self.image_size, b) for b in bboxes]
-        return image, bboxes, img_path, org_size,
+            bboxes = [self.target_transform(org_size, b) for b in bboxes]
+        return image, bboxes, img_path, org_size # type: ignore
 
 
 class ResizeAndPadImage():
@@ -73,7 +73,7 @@ class ResizeAndPadImage():
         # Get the correct new size for the image
         new_size = (self.img_size, int(self.img_size / ratio)) if ratio > 1 else (int(self.img_size * ratio), self.img_size)
         # Resize the image 
-        img = img.resize(new_size, self.resampling)
+        img = img.resize(new_size, self.resampling) # type: ignore
         # Center the image and pad the rest
         new = Image.new(img.mode, (self.img_size, self.img_size), GREY)
         if ratio > 1:
@@ -87,92 +87,62 @@ class ResizeAndPadBoxes():
     """
     Responsible for resizing and moving the bounding boxes for them to fit the outcome image from ResizeAndPadImage.
     """
-    def __init__(self, img_size):
+    def __init__(self, img_size: int):
         self.img_size = img_size
 
-    def __call__(self, org_size, new_size, bbs) -> list:
-        ratio = org_size[0]/org_size[1]
-        # Get scaled size of the image (we use this for resizing )
-        if ratio > 1:
-            s_size = int(new_size[0]), int(new_size[1] / ratio)
+    def __call__(self, org_size: Tuple[int, int], bbs: BoundingBox, inverse=False) -> BoundingBox:
+        if not inverse:
+            ratio = org_size[0] / org_size[1]
         else:
-            s_size = int(new_size[0] * ratio), int(new_size[1]) 
-        # Scale coordinates
-        bbs = scale_bbs(org_size, s_size, bbs)
-        # Move coordinates (This is done, due to us moving the image with ResizeAndPadImage to the center)
+            ratio = self.img_size
+        # Get scaled size of the image
         if ratio > 1:
-            bbs[2] = add_cord(bbs[2],new_size[1],s_size[1])
-            bbs[4] = add_cord(bbs[4],new_size[1],s_size[1])
+            scaled_size = self.img_size, int(self.img_size / ratio)
         else:
-            bbs[1] = add_cord(bbs[1],new_size[0],s_size[0])
-            bbs[3] = add_cord(bbs[3],new_size[0],s_size[0])
-        # Normalize (Actually is currently not used)
-        #bbs = norm(bbs, new_size[0])
+            scaled_size = int(self.img_size * ratio), self.img_size
+        # Resize and pad
+        if not inverse:
+            bbs = scale_bbs(bbs, org_size, scaled_size)
+            bbs = center_bbs(bbs, (self.img_size, self.img_size), scaled_size, ratio)
+        else:
+            bbs = center_bbs(bbs, (-self.img_size, -self.img_size), tuple([-x for x in scaled_size]), ratio)
+            bbs = scale_bbs(bbs, scaled_size, org_size)
         return bbs
 
-def norm(cords, img_side):
-    """
-    Early function used for normalizing the coordinate values for input.
-    """
-    for i in range(1, len(cords)):
-        cords[i] = cords[i] / img_side
-    return cords
 
-def add_cord(corn, new_s, s_size):
-    return int(corn +  (new_s - s_size) / 2)
-
-
-def scale_bbs(org_size, new_size, bbs):
+def center_bbs(bbox: BoundingBox, old_size: Tuple[int, int], new_size: Tuple[int, int], ratio: float) -> BoundingBox:
     """
-    Scale the bounding boxes to the new image size.
+    Center the bounding box along shorter image axis.
     """
-    Rx = new_size[0] / org_size[0]
-    Ry = new_size[1] / org_size[1]
-    bbs[1] = round(bbs[1] * Rx)
-    bbs[2] = round(bbs[2] * Ry)
-    bbs[3] = round(bbs[3] * Rx)
-    bbs[4] = round(bbs[4] * Ry)
-    return bbs
-
-
-def tensor_to_image(tensor_image): 
-    """
-    Early function used for changing back the given transformed tensor to an image.
-    """
-    inv_imagenet_normalize = Normalize(mean=[-0.485/0.229, -0.456/0.224, -0.406/0.225], std=[1./0.229, 1./0.224, 1./0.225])
-    to_pil_image = Compose([inv_imagenet_normalize, ToPILImage()])
-    image = to_pil_image(tensor_image)
-    return image
-
-def inv_resize_bbs(org_size, new_size, bbs):
-    """
-    Function responsible for undoing the scaling and appropriate moving of coordinates done by 'ResizeAndPadBoxes'.
-    Prepares the bounding boxes to be used on the original image.
-    """
-    ratio = new_size[0]/new_size[1]
-    # Get what the scaled sized of the image was
-    s_size = org_size[0], int(org_size[1] / ratio) if ratio > 1 else int(org_size[0] * ratio), org_size[1]
-    # Move coordinates back
     if ratio > 1:
-        bbs[2] = sub_cord(bbs[2], org_size[1], s_size[1])
-        bbs[4] = sub_cord(bbs[4], org_size[1], s_size[1])
+        bbox[1] += (new_size[1] - old_size[1]) // 2 # type: ignore
+        bbox[3] += (new_size[1] - old_size[1]) // 2 # type: ignore
     else:
-        bbs[1] = sub_cord(bbs[1], org_size[0], s_size[0])
-        bbs[3] = sub_cord(bbs[3], org_size[0], s_size[0])
-    # Scale coordinates back
-    bbs = scale_bbs(s_size, new_size, bbs)  
-    return bbs
+        bbox[0] += (new_size[0] - old_size[0]) // 2 # type: ignore
+        bbox[2] += (new_size[0] - old_size[0]) // 2 # type: ignore
+    return bbox
 
-def sub_cord(corn, new_s, s_size):
-    return int(corn -  (new_s- s_size)/2)
 
-def draw_box(image, bbx, target_class):
+def scale_bbs(bbox: BoundingBox, old_size: Tuple[int, int], new_size: Tuple[int, int]) -> BoundingBox:
+    """
+    Scale the bounding box to the new image size.
+    """
+    ratio_x, ratio_y = new_size[0] / old_size[0], new_size[1] / old_size[1]
+    rounding_fun = torch.round if isinstance(bbox, torch.Tensor) else round
+    bbox[0] = rounding_fun(bbox[0] * ratio_x)   # type: ignore
+    bbox[2] = rounding_fun(bbox[2] * ratio_x)   # type: ignore
+    bbox[1] = rounding_fun(bbox[1] * ratio_y)   # type: ignore
+    bbox[3] = rounding_fun(bbox[3] * ratio_y)   # type: ignore
+    return bbox
+
+
+def draw_box(image: np.ndarray, bbox: BoundingBox, target_class: int) -> np.ndarray:
     """
     Draw a single bounding box with class onto a given image.
     Help and inspiration drawn from https://stackoverflow.com/questions/56108183/python-opencv-cv2-drawing-rectangle-with-text
     """
-    corner_1 = tuple(bbx[0:2])
-    corner_2 = tuple(bbx[2:4])
+    WHITE = (255, 255, 255)
+    corner_1, corner_2 = tuple(bbox[0:2]), tuple(bbox[2:4])
     classes = {
         0: ("aircraft", (76, 155, 78)), 
         1: ("bomber", (223, 127, 56)),
@@ -180,30 +150,29 @@ def draw_box(image, bbx, target_class):
         3: ("fighter", (103,193,173)),
         4: ("military helicopter", (176, 65, 64))
     }
-    #label, color = classes[int(target_class)]
-    label, color = int(target_class), (255, 0, 0)
+    label, color = classes[target_class]
     # Drawing box on image
-    cv2.rectangle(image, corner_1, corner_2, color, 2)
-    # Adding what class onto bouding box
-    label = "{0}".format(label)
-    text_size = cv2.getTextSize(label, cv2.FONT_ITALIC, 0.4, 1)[0]
+    cv2.rectangle(image, corner_1, corner_2, color, thickness=2)
+    # Adding class text box
+    label = f'{label}'
+    text_size, _ = cv2.getTextSize(label, cv2.FONT_ITALIC, fontScale=0.4, thickness=1)
     corner_2 = corner_1[0] + text_size[0] + 4, corner_1[1] + text_size[1] + 4
-    cv2.rectangle(image, corner_1, corner_2, color, -1)
-    cv2.putText(image, label, (corner_1[0], corner_1[1] + text_size[1] + 4), cv2.FONT_ITALIC, 0.4, [255,255,255], 1)
+    cv2.rectangle(image, corner_1, corner_2, color, thickness=-1)
+    cv2.putText(image, label, (corner_1[0], corner_2[1]), cv2.FONT_ITALIC, 0.4, WHITE, thickness=1)
     return image
 
 
-def visualize_results(img_path, out_dir, targets):
+def visualize_results(img_path: str, out_dir: str, targets: Union[torch.Tensor, List[BoundingBox]]) -> None:
     """
-    Draw all bounding boxes with corresponding class onto a single image and saving the results.
+    Draw all bounding boxes with corresponding class onto a single image and write it to file.
     """
     image = Image.open(img_path).convert('RGB')
-    cur_size = image.width, image.height
+    image_size = image.width, image.height
     image = np.array(image)
+    resizer = ResizeAndPadBoxes(416)
     for target in targets:
-        bbx = target[0:5]
-        bbx = inv_resize_bbs((416,416), cur_size, bbx)
-        image = draw_box(image, bbx[1:], target[6])
+        bbox = target[1:5]
+        bbox = resizer(image_size, bbox, inverse=True)
+        image = draw_box(image, bbox, int(target[6]))
     out_path = os.path.join(out_dir, os.path.basename(img_path))
     Image.fromarray(image).save(out_path)
-    return image
