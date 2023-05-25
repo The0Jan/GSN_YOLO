@@ -32,11 +32,11 @@ class YOLOv3Module(pl.LightningModule):
         self.proc_13 = YOLOProcessor([(116, 90), (156, 198), (373, 326)], 32, self.img_size, self.num_classes, obj_coeff, noobj_coeff, ignore_threshold)
         # Loading model weights
         if load_only_backbone:
-            load_model_parameters(weights_file, self.model.backbone)
+            load_model_parameters(weights_file, [self.model.backbone])
             for param in self.model.backbone.parameters():
                 param.requires_grad = False
         else:
-            load_model_parameters(weights_file, self.model)
+            load_model_parameters(weights_file, self.model.get_load_order())
             for param in self.model.parameters():
                 param.requires_grad = False
 
@@ -53,7 +53,7 @@ class YOLOv3Module(pl.LightningModule):
         img_tensor, targets, _, _, = batch
         loss = 0
         outputs = list(self(img_tensor))
-        for i, proc in enumerate((self.proc_13, self.proc_26, self.proc_52)):
+        for i, proc in enumerate((self.proc_52, self.proc_26, self.proc_13)):
             x = outputs[i]
             # Apply sigmoid function on x, y, objectness, classes and also reshape into (batches, anchors, grid_size, grid_size, outputs)
             x = proc.reshape_and_sigmoid(x)

@@ -6,7 +6,7 @@ Autor: Jan Walczak (alpha), Bartłomiej Moroz (final)
 import numpy as np
 import torch.nn as nn
 import torch
-
+from typing import List
 
 def load_params(input_file, params: list):
     """
@@ -20,7 +20,7 @@ def load_params(input_file, params: list):
     return t
 
 
-def load_model_parameters(weight_file_name: str, model: nn.Module):
+def load_model_parameters(weight_file_name: str, modules: List[nn.Module]):
     """
     Load all parameters of input model from a weights file _specifically_ in P.J. Redmon's binary format.
     """
@@ -28,9 +28,7 @@ def load_model_parameters(weight_file_name: str, model: nn.Module):
         with open(weight_file_name, 'rb') as weight_file:
             # Read header
             header = np.fromfile(weight_file, dtype=np.int32, count=5)
-            # TODO: Remove this line, we don't really care about this.
-            _, _, _, seen, _ = torch.from_numpy(header)
-            module_list = [module for module in model.modules()]
+            module_list = [member for module in modules for member in module.modules()]
             # Load parameters into each layer
             for i in range(len(module_list)):
                 if(module_list[i]._get_name() == 'Conv2d'):
