@@ -12,8 +12,8 @@ from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.loggers import CSVLogger, TensorBoardLogger, WandbLogger
 from src.datamodules.madai import MADAIDataModule
 from src.datamodules.primitive import PrimitiveDataModule
-from src.datasets.madai import visualize_results
-from src.lightning.yolo import YOLOv3Module 
+from src.lightning.yolo import YOLOv3Module
+from src.other.visualizing_results import visualize_results
 
 
 CHECKPOINT_GID_BEST = "16x4pcp_mWr-MSv0TcliAGyfk843EjXWp"
