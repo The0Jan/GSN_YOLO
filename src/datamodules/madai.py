@@ -9,7 +9,13 @@ import pytorch_lightning as pl
 from src.datasets.madai import MADAIDataset, ResizeAndPadBoxes, ResizeAndPadImage
 import torch
 from torch.utils.data import DataLoader, random_split
-from torchvision.transforms import Compose, Normalize, ToTensor
+from torchvision.transforms import (
+    ColorJitter,
+    Compose,
+    Normalize,
+    RandomErasing,
+    ToTensor,
+)
 import zipfile
 
 
@@ -23,28 +29,29 @@ class MADAIDataModule(pl.LightningDataModule):
         train_img_dir="train-new/images",
         test_anno_dir="test-new/annotations",
         test_img_dir="test-new/images",
-        img_transform=None,
+        img_train_transform=None,
+        img_test_transform=None,
         target_transform=None,
     ) -> None:
         super().__init__()
         self.batch_size = batch_size
         self.image_size = image_size
-
+        self.num_workers = num_workers
         # Directories for test and train data
         self.train_anno_dir = train_anno_dir
         self.train_img_dir = train_img_dir
         self.test_anno_dir = test_anno_dir
         self.test_img_dir = test_img_dir
-
-        self.num_workers = num_workers
-        self.data_gid = "1sDqxwOeROzsfvW2d_K7O_akEyLhDcKa3"
+        # Dataset source
+        self.data_gid = "1R9KmuDpT5axTDHX_r_rHAgNFrhtjFc0A"
         self.data_file = "data.zip"
-
         # Init default transforms for images if none were given
-        self.img_transform = img_transform
-        if img_transform is None:
-            self.img_transform = self.get_img_transform()
-
+        self.img_train_transform = img_train_transform
+        if img_train_transform is None:
+            self.img_train_transform = self.get_train_img_transform()
+        self.img_test_transform = img_test_transform
+        if img_test_transform is None:
+            self.img_test_transform = self.get_test_img_transform()
         # Init default transforms for targets if none were given
         self.target_transform = target_transform
         if target_transform is None:
@@ -65,11 +72,11 @@ class MADAIDataModule(pl.LightningDataModule):
             dataset_yolo = MADAIDataset(
                 self.train_anno_dir,
                 self.train_img_dir,
-                transform=self.img_transform,
+                transform=self.img_train_transform,
                 target_transform=self.target_transform,
                 image_size=self.image_size,
             )
-            train_dataset_size = int(len(dataset_yolo) * 0.9)
+            train_dataset_size = int(len(dataset_yolo) * 0.8)
             self.dataset_train, self.dataset_val = random_split(
                 dataset_yolo,
                 [train_dataset_size, len(dataset_yolo) - train_dataset_size],
@@ -78,7 +85,7 @@ class MADAIDataModule(pl.LightningDataModule):
             self.dataset_test = MADAIDataset(
                 self.test_anno_dir,
                 self.test_img_dir,
-                transform=self.img_transform,
+                transform=self.img_test_transform,
                 target_transform=self.target_transform,
                 image_size=self.image_size,
             )
@@ -113,7 +120,18 @@ class MADAIDataModule(pl.LightningDataModule):
             collate_fn=self._collate_fn,
         )
 
-    def get_img_transform(self):
+    def get_train_img_transform(self):
+        return Compose(
+            [
+                ColorJitter(brightness=0.4, contrast=0.4),
+                ResizeAndPadImage(416),
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                RandomErasing(p=0.3),
+            ]
+        )
+
+    def get_test_img_transform(self):
         return Compose(
             [
                 ResizeAndPadImage(416),

@@ -57,8 +57,7 @@ def visualize_results(
     image = np.array(image)
     resizer = ResizeAndPadBoxes(416)
     for target in targets:
-        bbox = target[1:5]
-        bbox = resizer(image_size, bbox, inverse=True)
+        bbox = resizer(image_size, target[:5], inverse=True)[1:]
         image = draw_box(image, bbox, int(target[6]))
     out_path = os.path.join(out_dir, os.path.basename(img_path))
     Image.fromarray(image).save(out_path)

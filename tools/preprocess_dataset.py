@@ -6,6 +6,8 @@ Opis: Skrypt do jednorazowego przetwarzania wstępnego zbioru danych
 Autor: Bartłomiej Moroz, Jan Walczak
 """
 import os
+import numpy as np
+from PIL import Image, ImageOps
 from shutil import make_archive, unpack_archive, copyfile
 from typing import List
 from xml.etree.ElementTree import parse as xml_parse, Element
@@ -71,6 +73,36 @@ def process_images(filename: str, outdir: str) -> None:
     copyfile(filename, os.path.join(outdir, os.path.basename(filename)))
 
 
+def flip_boxes(boxes: List[List[str]], width: int) -> List[List[str]]:
+    """
+    Flip annotation bounding boxes vertically.
+    """
+    boxes = np.array([[int(x) for x in box] for box in boxes])
+    boxes[:, 1::2] = np.array((width, width)) - boxes[:, 3::-2]
+    boxes = [[str(x) for x in box] for box in boxes]
+    return boxes
+
+
+def process_data_augment(
+    img_file: str,
+    anno_file: str,
+    outdir_img: str,
+    outdir_anno: str,
+) -> None:
+    """
+    Created a vertically flipped image and annotations file.
+    """
+    boxes = process_xml(anno_file)
+    image = Image.open(img_file)
+    boxes = flip_boxes(boxes, image.width)
+    name, _ = os.path.splitext(os.path.basename(anno_file))
+    with open(os.path.join(outdir_anno, name + "_flipped" + ".csv"), "w") as out:
+        out.writelines([",".join(box) + "\n" for box in boxes])
+    image = ImageOps.mirror(image)
+    name, _ = os.path.splitext(os.path.basename(img_file))
+    image.save(os.path.join(outdir_img, name + "_flipped" + ".jpeg"))
+
+
 if __name__ == "__main__":
     TRAIN_ZIP_IN = "train-MADAI"
     TRAIN_ZIP_OUT = "train-new"
@@ -89,10 +121,10 @@ if __name__ == "__main__":
     unpack_archive(TRAIN_ZIP_IN + ".zip", TRAIN_ZIP_IN, format="zip")
     os.makedirs(TRAIN_CSV_OUT, exist_ok=True)
     os.makedirs(TRAIN_IMG_OUT, exist_ok=True)
-    for file in os.listdir(TRAIN_CSV_IN):
-        process_annotations(os.path.join(TRAIN_CSV_IN, file), TRAIN_CSV_OUT)
-    for file in os.listdir(TRAIN_IMG_IN):
-        process_images(os.path.join(TRAIN_IMG_IN, file), TRAIN_IMG_OUT)
+    for csv_file, image in zip(os.listdir(TRAIN_CSV_IN), os.listdir(TRAIN_IMG_IN)):
+        process_data_augment(
+            os.path.join(TRAIN_IMG_IN, image), os.path.join(TRAIN_CSV_IN, csv_file), TRAIN_IMG_OUT, TRAIN_CSV_OUT
+        )
     make_archive(TRAIN_ZIP_OUT, format="zip", root_dir=TRAIN_ZIP_OUT, base_dir=".")
 
     unpack_archive(TEST_ZIP_IN + ".zip", TEST_ZIP_IN, format="zip")
