@@ -138,12 +138,13 @@ def center_bbs(
     """
     Center the bounding box along shorter image axis.
     """
+        
     if ratio > 1:
-        bbox[2] += (new_size[1] - old_size[1]) // 2  # type: ignore
-        bbox[4] += (new_size[1] - old_size[1]) // 2  # type: ignore
+        bbox[1] += (new_size[1] - old_size[1]) // 2  # type: ignore
+        bbox[3] += (new_size[1] - old_size[1]) // 2  # type: ignore
     else:
-        bbox[1] += (new_size[0] - old_size[0]) // 2  # type: ignore
-        bbox[3] += (new_size[0] - old_size[0]) // 2  # type: ignore
+        bbox[0] += (new_size[0] - old_size[0]) // 2  # type: ignore
+        bbox[2] += (new_size[0] - old_size[0]) // 2  # type: ignore
     return bbox
 
 
@@ -155,8 +156,8 @@ def scale_bbs(
     """
     ratio_x, ratio_y = new_size[0] / old_size[0], new_size[1] / old_size[1]
     rounding_fun = torch.round if isinstance(bbox, torch.Tensor) else round
-    bbox[1] = rounding_fun(bbox[1] * ratio_x)  # type: ignore
-    bbox[3] = rounding_fun(bbox[3] * ratio_x)  # type: ignore
-    bbox[2] = rounding_fun(bbox[2] * ratio_y)  # type: ignore
-    bbox[4] = rounding_fun(bbox[4] * ratio_y)  # type: ignore
+    bbox[0] = rounding_fun(bbox[0] * ratio_x)  # type: ignore
+    bbox[2] = rounding_fun(bbox[2] * ratio_x)  # type: ignore
+    bbox[1] = rounding_fun(bbox[1] * ratio_y)  # type: ignore
+    bbox[3] = rounding_fun(bbox[3] * ratio_y)  # type: ignore
     return bbox

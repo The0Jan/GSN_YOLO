@@ -43,7 +43,7 @@ class MADAIDataModule(pl.LightningDataModule):
         self.test_anno_dir = test_anno_dir
         self.test_img_dir = test_img_dir
         # Dataset source
-        self.data_gid = "1sDqxwOeROzsfvW2d_K7O_akEyLhDcKa3"
+        self.data_gid = "1R9KmuDpT5axTDHX_r_rHAgNFrhtjFc0A"
         self.data_file = "data.zip"
         # Init default transforms for images if none were given
         self.img_train_transform = img_train_transform
