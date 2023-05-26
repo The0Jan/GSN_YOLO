@@ -72,6 +72,9 @@ def process_images(filename: str, outdir: str) -> None:
     copyfile(filename, os.path.join(outdir, os.path.basename(filename)))
 
 def flip_boxes(boxes:list, width: int) ->list:
+    """
+    Flip annotations bounding boxes vertically
+    """
     boxes = np.array([[int(float(j)) for j in i] for i in boxes])
     boxes[:, 1::2] = np.array((width, width)) - boxes[:, 3::-2]
     boxes = np.array([[(str(j)) for j in i] for i in boxes])
@@ -79,14 +82,12 @@ def flip_boxes(boxes:list, width: int) ->list:
 
 def process_data_augment( img_name: str, anno_name: str, outdir_img: str, indir_img: str, outdir_anno: str, indir_anno: str) -> None:
     """
-    Dump annotation array to CSV file.
+    Created a flipped vertically image version and annotations file.
     """
- 
     boxes = process_xml(os.path.join(indir_anno, anno_name))
     image = Image.open(os.path.join(indir_img, img_name))
     
     boxes = flip_boxes(boxes, image.width)
-
     name, _ = os.path.splitext(anno_name) 
     with open(os.path.join(outdir_anno, name + '_flipped' + '.csv'), 'w') as out:
         out.writelines([','.join(box) + '\n' for box in boxes])
