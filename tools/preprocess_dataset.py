@@ -6,12 +6,13 @@ Opis: Skrypt do jednorazowego przetwarzania wstępnego zbioru danych
 Autor: Bartłomiej Moroz, Jan Walczak
 """
 import os
+import numpy as np
+from PIL import Image, ImageOps
 from shutil import make_archive, unpack_archive, copyfile
 from typing import List
 from xml.etree.ElementTree import parse as xml_parse, Element
-import random
-from PIL import Image, ImageOps
-import numpy as np
+
+
 classLUT = {
     "aircraft": "0",
     "aircraftw": "0",  # typo in the dataset!!!
@@ -71,30 +72,36 @@ def process_images(filename: str, outdir: str) -> None:
     """
     copyfile(filename, os.path.join(outdir, os.path.basename(filename)))
 
-def flip_boxes(boxes:list, width: int) ->list:
+
+def flip_boxes(boxes: List[List[str]], width: int) -> List[List[str]]:
     """
-    Flip annotations bounding boxes vertically
+    Flip annotation bounding boxes vertically.
     """
-    boxes = np.array([[int(float(j)) for j in i] for i in boxes])
+    boxes = np.array([[int(x) for x in box] for box in boxes])
     boxes[:, 1::2] = np.array((width, width)) - boxes[:, 3::-2]
-    boxes = np.array([[(str(j)) for j in i] for i in boxes])
+    boxes = [[str(x) for x in box] for box in boxes]
     return boxes
 
-def process_data_augment( img_name: str, anno_name: str, outdir_img: str, indir_img: str, outdir_anno: str, indir_anno: str) -> None:
+
+def process_data_augment(
+    img_file: str,
+    anno_file: str,
+    outdir_img: str,
+    outdir_anno: str,
+) -> None:
     """
-    Created a flipped vertically image version and annotations file.
+    Created a vertically flipped image and annotations file.
     """
-    boxes = process_xml(os.path.join(indir_anno, anno_name))
-    image = Image.open(os.path.join(indir_img, img_name))
-    
+    boxes = process_xml(anno_file)
+    image = Image.open(img_file)
     boxes = flip_boxes(boxes, image.width)
-    name, _ = os.path.splitext(anno_name) 
-    with open(os.path.join(outdir_anno, name + '_flipped' + '.csv'), 'w') as out:
-        out.writelines([','.join(box) + '\n' for box in boxes])
-        
-    img_flipped = ImageOps.flip(image)
-    name, _ = os.path.splitext(img_name) 
-    img_flipped.save(os.path.join(outdir_img,  name + '_flipped' +'.jpeg') )
+    name, _ = os.path.splitext(os.path.basename(anno_file))
+    with open(os.path.join(outdir_anno, name + "_flipped" + ".csv"), "w") as out:
+        out.writelines([",".join(box) + "\n" for box in boxes])
+    image = ImageOps.flip(image)
+    name, _ = os.path.splitext(os.path.basename(img_file))
+    image.save(os.path.join(outdir_img, name + "_flipped" + ".jpeg"))
+
 
 if __name__ == "__main__":
     TRAIN_ZIP_IN = "train-MADAI"
@@ -114,15 +121,11 @@ if __name__ == "__main__":
     unpack_archive(TRAIN_ZIP_IN + ".zip", TRAIN_ZIP_IN, format="zip")
     os.makedirs(TRAIN_CSV_OUT, exist_ok=True)
     os.makedirs(TRAIN_IMG_OUT, exist_ok=True)
-    csv_list = os.listdir(TRAIN_CSV_IN)
-    image_list = os.listdir(TRAIN_IMG_IN)
-    for index in range(len(csv_list)):
-        process_annotations(os.path.join(TRAIN_CSV_IN, csv_list[index]), TRAIN_CSV_OUT)
-        process_images(os.path.join(TRAIN_IMG_IN, image_list[index]), TRAIN_IMG_OUT)
-        process_data_augment(image_list[index], csv_list[index], TRAIN_IMG_OUT, TRAIN_IMG_IN, TRAIN_CSV_OUT, TRAIN_CSV_IN )
-            
-
-    make_archive(TRAIN_ZIP_OUT, format='zip', root_dir=TRAIN_ZIP_OUT, base_dir='.')
+    for csv_file, image in zip(os.listdir(TRAIN_CSV_IN), os.listdir(TRAIN_IMG_IN)):
+        process_data_augment(
+            os.path.join(TRAIN_IMG_IN, image), os.path.join(TRAIN_CSV_IN, csv_file), TRAIN_IMG_OUT, TRAIN_CSV_OUT
+        )
+    make_archive(TRAIN_ZIP_OUT, format="zip", root_dir=TRAIN_ZIP_OUT, base_dir=".")
 
     unpack_archive(TEST_ZIP_IN + ".zip", TEST_ZIP_IN, format="zip")
     os.makedirs(TEST_CSV_OUT, exist_ok=True)

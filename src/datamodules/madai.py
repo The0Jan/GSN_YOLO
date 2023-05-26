@@ -9,7 +9,13 @@ import pytorch_lightning as pl
 from src.datasets.madai import MADAIDataset, ResizeAndPadBoxes, ResizeAndPadImage
 import torch
 from torch.utils.data import DataLoader, random_split
-from torchvision.transforms import Compose, Normalize, ToTensor, Compose, ToTensor, Normalize, ColorJitter, RandomErasing
+from torchvision.transforms import (
+    ColorJitter,
+    Compose,
+    Normalize,
+    RandomErasing,
+    ToTensor,
+)
 import zipfile
 
 
@@ -30,27 +36,22 @@ class MADAIDataModule(pl.LightningDataModule):
         super().__init__()
         self.batch_size = batch_size
         self.image_size = image_size
-
+        self.num_workers = num_workers
         # Directories for test and train data
         self.train_anno_dir = train_anno_dir
         self.train_img_dir = train_img_dir
         self.test_anno_dir = test_anno_dir
         self.test_img_dir = test_img_dir
-
-        self.num_workers = num_workers
+        # Dataset source
         self.data_gid = "1sDqxwOeROzsfvW2d_K7O_akEyLhDcKa3"
         self.data_file = "data.zip"
-
         # Init default transforms for images if none were given
-        self.img_train_transform  = img_train_transform
+        self.img_train_transform = img_train_transform
         if img_train_transform is None:
             self.img_train_transform = self.get_train_img_transform()
-
-        self.img_test_transform  = img_test_transform
+        self.img_test_transform = img_test_transform
         if img_test_transform is None:
             self.img_test_transform = self.get_test_img_transform()
-        
-
         # Init default transforms for targets if none were given
         self.target_transform = target_transform
         if target_transform is None:
@@ -120,10 +121,24 @@ class MADAIDataModule(pl.LightningDataModule):
         )
 
     def get_train_img_transform(self):
-        return Compose([ColorJitter(brightness=0.4, contrast=0.4), ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]), RandomErasing(p=0.3)])
+        return Compose(
+            [
+                ColorJitter(brightness=0.4, contrast=0.4),
+                ResizeAndPadImage(416),
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+                RandomErasing(p=0.3),
+            ]
+        )
 
     def get_test_img_transform(self):
-        return Compose([ResizeAndPadImage(416), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+        return Compose(
+            [
+                ResizeAndPadImage(416),
+                ToTensor(),
+                Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ]
+        )
 
     def get_target_transform(self):
         return ResizeAndPadBoxes(416)
