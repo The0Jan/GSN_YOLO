@@ -75,7 +75,7 @@ class MADAIDataModule(pl.LightningDataModule):
                 target_transform=self.target_transform,
                 image_size=self.image_size,
             )
-            train_dataset_size = int(len(dataset_yolo) * 0.9)
+            train_dataset_size = int(len(dataset_yolo) * 0.8)
             self.dataset_train, self.dataset_val = random_split(
                 dataset_yolo,
                 [train_dataset_size, len(dataset_yolo) - train_dataset_size],
