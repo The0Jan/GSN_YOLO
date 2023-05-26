@@ -75,7 +75,7 @@ def process_images(filename: str, outdir: str) -> None:
 
 def flip_boxes(boxes: List[List[str]], width: int) -> List[List[str]]:
     """
-    Flip annotation bounding boxes vertically.
+    Flip annotation bounding boxes horizontally.
     """
     boxes = np.array([[int(x) for x in box] for box in boxes])
     boxes[:, 1::2] = np.array((width, width)) - boxes[:, 3::-2]
@@ -90,7 +90,7 @@ def process_data_augment(
     outdir_anno: str,
 ) -> None:
     """
-    Created a vertically flipped image and annotations file.
+    Created a horizontally flipped image and annotations file.
     """
     boxes = process_xml(anno_file)
     image = Image.open(img_file)
