@@ -98,7 +98,7 @@ def process_data_augment(
     name, _ = os.path.splitext(os.path.basename(anno_file))
     with open(os.path.join(outdir_anno, name + "_flipped" + ".csv"), "w") as out:
         out.writelines([",".join(box) + "\n" for box in boxes])
-    image = ImageOps.flip(image)
+    image = ImageOps.mirror(image)
     name, _ = os.path.splitext(os.path.basename(img_file))
     image.save(os.path.join(outdir_img, name + "_flipped" + ".jpeg"))
 
