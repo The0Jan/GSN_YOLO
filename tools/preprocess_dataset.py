@@ -118,8 +118,7 @@ if __name__ == "__main__":
     for index in range(len(csv_list)):
         process_annotations(os.path.join(TRAIN_CSV_IN, csv_list[index]), TRAIN_CSV_OUT)
         process_images(os.path.join(TRAIN_IMG_IN, image_list[index]), TRAIN_IMG_OUT)
-        if random.random() < 0.6:
-            process_data_augment(image_list[index], csv_list[index], TRAIN_IMG_OUT, TRAIN_IMG_IN, TRAIN_CSV_OUT, TRAIN_CSV_IN )
+        process_data_augment(image_list[index], csv_list[index], TRAIN_IMG_OUT, TRAIN_IMG_IN, TRAIN_CSV_OUT, TRAIN_CSV_IN )
             
 
     make_archive(TRAIN_ZIP_OUT, format='zip', root_dir=TRAIN_ZIP_OUT, base_dir='.')
